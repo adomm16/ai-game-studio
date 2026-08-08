@@ -47,6 +47,7 @@
     "docs/plans/PLANS.md",
     "docs/plans/studio-os-v0.1-remediation-plan.md",
     "docs/plans/studio-os-v0.1-final-p1-plan.md",
+    "docs/plans/studio-os-v0.1-release-gate-plan.md",
     "docs/production/change-log.md",
     "docs/production/dependency-register.md",
     "docs/production/risk-register.md",
@@ -75,6 +76,36 @@
   ],
   "agent_profile_glob": "docs/agents/*.md",
   "agent_profile_exclusions": ["index.md", "shared-professional-policy.md"],
+  "agent_profile_required_headings": [
+    "Agent ID", "Kurumsal unvan", "Departman", "Rapor verdiği rol",
+    "Denetlediği roller", "Temel misyon", "Uzmanlık alanları",
+    "Profesyonel karakter", "Karar yaklaşımı", "Yetkileri",
+    "Yetkisiz olduğu işlemler", "Zorunlu girdiler", "Zorunlu çıktılar",
+    "Araştırma yükümlülükleri", "Kalite kontrol listesi", "Başarı ölçütleri",
+    "Reddetme koşulları", "Escalation koşulları", "Çıkar çatışması kuralları",
+    "Handoff formatı", "Diğer agentlarla çalışma şekli",
+    "Kurucu onayı gerektiren durumlar"
+  ],
+  "protected_founder_rights": [
+    "Stüdyo adı", "Şirket kuruluşu", "Marka tescili başvurusu",
+    "Alan adı satın alma", "Ana oyun projesinin seçimi", "Oyun adı",
+    "Bütçe ve ücretli servis kullanımı", "Yatırımcı veya yayıncı anlaşmaları",
+    "Personel veya yüklenici sözleşmeleri", "Public release",
+    "Main branch korumalarının kaldırılması", "Büyük kapsam değişiklikleri",
+    "Canlı para kazanma sistemi", "Oyuncu verisi toplayan sistemlerin açılması"
+  ],
+  "required_agents_links": [
+    "docs/studio/constitution.md", "docs/studio/founder-rights.md",
+    "docs/studio/decision-protocol.md", "docs/studio/research-policy.md",
+    "docs/studio/intellectual-property-policy.md", "docs/studio/quality-gates.md",
+    "docs/plans/PLANS.md", "docs/agents/index.md"
+  ],
+  "decision_metadata_required_fields": [
+    "Decision ID", "Record ID", "Author Agent ID", "Created Date",
+    "Source References", "Conflict of Interest Declaration",
+    "Previous Stage References", "Next Stage", "Review Target",
+    "Independence Declaration"
+  ],
   "critical_files": [
     "AGENTS.md",
     "studio.manifest.json",
@@ -104,6 +135,20 @@
     "independent-red-team-auditor", "legal-ip-risk-advisor", "accessibility-ethics-reviewer",
     "quality-assurance-director", "security-privacy-lead"
   ],
+  "required_reporting_relationships": [
+    {"role": "independent-red-team-auditor", "reports_to": "FOUNDER"},
+    {"role": "legal-ip-risk-advisor", "reports_to": "FOUNDER"},
+    {"role": "accessibility-ethics-reviewer", "reports_to": "FOUNDER"},
+    {"role": "quality-assurance-director", "reports_to": "FOUNDER"},
+    {"role": "security-privacy-lead", "reports_to": "FOUNDER"}
+  ],
+  "forbidden_reporting_relationships": [
+    {"role": "independent-red-team-auditor", "reports_to": "studio-orchestrator"},
+    {"role": "legal-ip-risk-advisor", "reports_to": "studio-orchestrator"},
+    {"role": "accessibility-ethics-reviewer", "reports_to": "studio-orchestrator"},
+    {"role": "quality-assurance-director", "reports_to": "studio-orchestrator"},
+    {"role": "security-privacy-lead", "reports_to": "studio-orchestrator"}
+  ],
   "forbidden_supervisor_relationships": [
     {"supervisor": "studio-orchestrator", "role": "independent-red-team-auditor"},
     {"supervisor": "studio-orchestrator", "role": "legal-ip-risk-advisor"},
@@ -111,7 +156,11 @@
     {"supervisor": "studio-orchestrator", "role": "quality-assurance-director"},
     {"supervisor": "studio-orchestrator", "role": "security-privacy-lead"}
   ],
+  "forbidden_supervision_claims": [
+    {"supervisor": "studio-orchestrator", "text": "Tüm uzman roller"}
+  ],
   "decision_chain": {
+    "final_stage": "final decision record",
     "stages": {
       "decision brief": {"minimum": 1, "maximum": 1},
       "research memo": {"minimum": 1},
@@ -143,12 +192,26 @@
       "/scripts/validate_studio.py",
       "/tests/"
     ],
-    "validation_workflow_name": "studio-validation",
+    "required_workflow_file": ".github/workflows/studio-validation.yml",
+    "required_workflow_name": "studio-validation",
+    "required_job_id": "validate",
+    "required_job_display_name": "studio-validation",
     "required_status_check": "studio-validation",
+    "required_triggers": ["pull_request", "push"],
     "required_push_branches": ["chatgb", "fix/**"],
-    "required_validation_commands": [
+    "required_commands": [
       "python scripts/validate_studio.py",
       "python -m unittest discover -s tests -v"
+    ],
+    "required_actions": ["actions/checkout@", "actions/setup-python@"],
+    "forbidden_failure_masking_patterns": [
+      "\\|\\|\\s*true\\s*$", ";\\s*true\\s*$", "&&\\s*exit\\s+0\\s*$"
+    ],
+    "supported_yaml_subset": [
+      "indentation-based block mappings",
+      "indentation-based block sequences",
+      "plain and quoted scalar values",
+      "single-line name, uses, and run values"
     ]
   },
   "agent_profile_regression": {

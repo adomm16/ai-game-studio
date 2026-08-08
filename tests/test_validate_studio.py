@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from validate_studio import ROOT, REQUIRED_HEADINGS, validate, validate_repository
+from validate_studio import ROOT, validate, validate_repository
 
 
 class StudioValidatorTests(unittest.TestCase):
@@ -109,8 +109,9 @@ Bağımsız
 
     def test_all_agent_headings_accept_utf8_turkish(self):
         text = (ROOT / "docs/agents/accessibility-ethics-reviewer.md").read_text(encoding="utf-8")
+        required_headings = json.loads((ROOT / "studio.manifest.json").read_text(encoding="utf-8"))["agent_profile_required_headings"]
         self.assertIn("Erişilebilirlik", text)
-        self.assertTrue(all(f"## {heading}" in text for heading in REQUIRED_HEADINGS))
+        self.assertTrue(all(f"## {heading}" in text for heading in required_headings))
 
     def test_duplicate_agent_id(self):
         def mutate(dst):
@@ -139,7 +140,7 @@ Bağımsız
         def mutate(dst):
             path = dst / "docs/agents/legal-ip-risk-advisor.md"
             path.write_text(path.read_text(encoding="utf-8").replace("`FOUNDER`", "`studio-orchestrator`", 1), encoding="utf-8")
-        self.assertTrue(any("Bağımsız rol doğrudan FOUNDER" in error for error in self.errors_after(mutate)))
+        self.assertTrue(any("raporlama ilişkisi" in error for error in self.errors_after(mutate)))
 
     def test_orchestrator_cannot_supervise_independent_role(self):
         def mutate(dst):
@@ -152,7 +153,7 @@ Bağımsız
             path = dst / "docs/agents/studio-orchestrator.md"
             path.write_text(path.read_text(encoding="utf-8").replace("## Denetlediği roller\nYok", "## Denetlediği roller\nTüm uzman roller", 1), encoding="utf-8")
         errors = self.errors_after(mutate)
-        self.assertTrue(any("tüm uzman rolleri" in error for error in errors))
+        self.assertTrue(any("Yasak denetim iddiası" in error for error in errors))
 
     def test_founder_authority_delegation_is_rejected(self):
         def mutate(dst):
@@ -436,6 +437,14 @@ Bağımsız
             path.write_text(path.read_text(encoding="utf-8").replace(replace_from, replace_to), encoding="utf-8")
         return self.errors_after(mutate)
 
+    def manifest_errors(self, mutate_manifest):
+        def mutate(d):
+            path = d / "studio.manifest.json"
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+            mutate_manifest(manifest)
+            path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return self.errors_after(mutate)
+
     def test_workflow_pull_request_missing(self):
         self.assertTrue(any("pull_request" in e for e in self.workflow_errors("  pull_request:\n", "")))
 
@@ -461,7 +470,146 @@ Bağımsız
         self.assertTrue(any("checkout" in e for e in self.workflow_errors("actions/checkout@v4", "example/no-checkout@v4")))
 
     def test_workflow_python_setup_missing(self):
-        self.assertTrue(any("Python setup" in e for e in self.workflow_errors("actions/setup-python@v5", "example/no-python@v5")))
+        self.assertTrue(any("actions/setup-python@" in e for e in self.workflow_errors("actions/setup-python@v5", "example/no-python@v5")))
+
+    def test_workflow_required_job_id_cannot_be_renamed(self):
+        errors = self.workflow_errors("  validate:\n", "  renamed-job:\n")
+        self.assertTrue(any("required job ID" in error for error in errors))
+
+    def test_workflow_required_job_display_name_is_exact(self):
+        errors = self.workflow_errors("    name: studio-validation", "    name: renamed-display")
+        self.assertTrue(any("display name" in error for error in errors))
+
+    def test_workflow_required_commands_cannot_move_to_other_job(self):
+        replacement = """  validate:
+    name: studio-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+  other:
+    name: other
+    runs-on: ubuntu-latest
+    steps:
+      - run: python scripts/validate_studio.py
+      - run: python -m unittest discover -s tests -v
+"""
+        errors = self.workflow_errors("  validate:\n    name: studio-validation\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with:\n          python-version: \"3.12\"\n      - name: Validate governance repository\n        run: python scripts/validate_studio.py\n      - name: Run unit tests\n        run: python -m unittest discover -s tests -v\n", replacement)
+        self.assertTrue(any("required command missing" in error for error in errors))
+
+    def test_workflow_spoofed_second_display_name_is_rejected(self):
+        addition = "\n  spoof:\n    name: studio-validation\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo fake\n"
+        errors = self.workflow_errors("      - name: Run unit tests\n        run: python -m unittest discover -s tests -v\n", "      - name: Run unit tests\n        run: python -m unittest discover -s tests -v\n" + addition)
+        self.assertTrue(any("spoofed duplicate" in error for error in errors))
+
+    def test_workflow_required_job_needs_is_rejected(self):
+        errors = self.workflow_errors("    runs-on: ubuntu-latest", "    needs: optional\n    runs-on: ubuntu-latest")
+        self.assertTrue(any("needs" in error for error in errors))
+
+    def test_workflow_flow_mapping_is_rejected(self):
+        errors = self.workflow_errors("    runs-on: ubuntu-latest", "    env: {AUDIT_MODE: strict}\n    runs-on: ubuntu-latest")
+        self.assertTrue(any("flow mapping" in error for error in errors))
+
+    def test_workflow_flow_sequence_is_rejected(self):
+        errors = self.workflow_errors("    runs-on: ubuntu-latest", "    env: [strict]\n    runs-on: ubuntu-latest")
+        self.assertTrue(any("flow sequence" in error for error in errors))
+
+    def test_workflow_anchor_and_alias_are_rejected(self):
+        errors = self.workflow_errors("    runs-on: ubuntu-latest", "    env: &audit\n      MODE: strict\n    copied: *audit\n    runs-on: ubuntu-latest")
+        self.assertTrue(any("anchor" in error for error in errors))
+        self.assertTrue(any("alias" in error for error in errors))
+
+    def test_workflow_merge_key_is_rejected(self):
+        errors = self.workflow_errors("    runs-on: ubuntu-latest", "    <<: *defaults\n    runs-on: ubuntu-latest")
+        self.assertTrue(any("merge key" in error for error in errors))
+
+    def test_workflow_expression_is_rejected(self):
+        errors = self.workflow_errors("run: python scripts/validate_studio.py", "run: ${{ format('python {0}', 'scripts/validate_studio.py') }}")
+        self.assertTrue(any("dynamic expression" in error for error in errors))
+
+    def test_workflow_multiline_run_is_rejected(self):
+        errors = self.workflow_errors("run: python scripts/validate_studio.py", "run: |\n          python scripts/validate_studio.py")
+        self.assertTrue(any("multiline run" in error for error in errors))
+
+    def test_workflow_required_step_if_is_rejected(self):
+        errors = self.workflow_errors("      - name: Run unit tests", "      - name: Run unit tests\n        if: false")
+        self.assertTrue(any("steps must not" in error for error in errors))
+
+    def test_workflow_flow_tokens_in_comment_or_plain_run_are_safe(self):
+        errors = self.workflow_errors("        run: python scripts/validate_studio.py", "        # env: {AUDIT_MODE: strict}\n        run: python scripts/validate_studio.py\n      - run: echo safe [text]")
+        self.assertEqual([], errors)
+
+    def test_manifest_agent_heading_removal_conflicts_with_profiles(self):
+        errors = self.manifest_errors(lambda m: m["agent_profile_required_headings"].remove("Uzmanlık alanları"))
+        self.assertTrue(any("manifestte tanımsız agent başlığı" in error for error in errors))
+
+    def test_manifest_founder_right_removal_conflicts_with_document(self):
+        errors = self.manifest_errors(lambda m: m["protected_founder_rights"].remove("Stüdyo adı"))
+        self.assertTrue(any("belgede var ancak manifest" in error for error in errors))
+
+    def test_agents_link_policy_comes_only_from_manifest(self):
+        def mutate(d):
+            manifest_path = d / "studio.manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["required_agents_links"].remove("docs/studio/quality-gates.md")
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            agents = d / "AGENTS.md"
+            agents.write_text(agents.read_text(encoding="utf-8").replace("- [Kalite kapıları](docs/studio/quality-gates.md)\n", ""), encoding="utf-8")
+        self.assertEqual([], self.errors_after(mutate))
+
+    def test_decision_field_policy_comes_only_from_manifest(self):
+        def mutate(d):
+            manifest_path = d / "studio.manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["decision_metadata_required_fields"].remove("Review Target")
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            for path in (d / "docs/decisions/templates").glob("*.md"):
+                text = path.read_text(encoding="utf-8")
+                text = text.replace("## Review Target\n", "## Optional Review Target\n", 1)
+                path.write_text(text, encoding="utf-8")
+        self.assertEqual([], self.errors_after(mutate))
+
+    def test_workflow_job_id_policy_comes_only_from_manifest(self):
+        def mutate(d):
+            manifest_path = d / "studio.manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["repository_protection"]["required_job_id"] = "renamed-job"
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            workflow = d / ".github/workflows/studio-validation.yml"
+            workflow.write_text(workflow.read_text(encoding="utf-8").replace("  validate:\n", "  renamed-job:\n"), encoding="utf-8")
+            doc = d / "docs/studio/repository-protection-setup.md"
+            doc.write_text(doc.read_text(encoding="utf-8").replace("required job ID: `validate`", "required job ID: `renamed-job`"), encoding="utf-8")
+        self.assertEqual([], self.errors_after(mutate))
+
+    def test_manifest_and_repository_protection_document_conflict(self):
+        errors = self.manifest_errors(lambda m: m["repository_protection"].__setitem__("required_status_check", "other-check"))
+        self.assertTrue(any("document disagrees with manifest" in error for error in errors))
+
+    def test_manifest_policy_wrong_type_is_rejected(self):
+        errors = self.manifest_errors(lambda m: m.__setitem__("agent_profile_required_headings", "wrong"))
+        self.assertTrue(any("non-empty list" in error for error in errors))
+
+    def test_manifest_empty_policy_list_is_rejected(self):
+        errors = self.manifest_errors(lambda m: m.__setitem__("decision_metadata_required_fields", []))
+        self.assertTrue(any("non-empty list" in error for error in errors))
+
+    def test_manifest_duplicate_policy_entry_is_rejected(self):
+        errors = self.manifest_errors(lambda m: m["independent_roles"].append(m["independent_roles"][0]))
+        self.assertTrue(any("duplicate entries" in error for error in errors))
+
+    def test_manifest_unknown_independent_role_is_rejected(self):
+        errors = self.manifest_errors(lambda m: m["independent_roles"].append("unknown-role"))
+        self.assertTrue(any("independent role is unknown" in error for error in errors))
+
+    def test_manifest_required_and_forbidden_relationship_conflict(self):
+        def mutate(m):
+            m["forbidden_reporting_relationships"].append(dict(m["required_reporting_relationships"][0]))
+        errors = self.manifest_errors(mutate)
+        self.assertTrue(any("both required and forbidden" in error for error in errors))
+
+    def test_manifest_required_job_id_missing_is_rejected(self):
+        errors = self.manifest_errors(lambda m: m["repository_protection"].pop("required_job_id"))
+        self.assertTrue(any("required_job_id" in error for error in errors))
 
     def test_valid_codeowners_and_workflow_positive(self):
         self.assertEqual([], validate(ROOT))

@@ -4,11 +4,17 @@ Bu belge GitHub yöneticisinin `chatgb` dalına uygulaması gereken ruleset'i ta
 
 ## Hedef ruleset
 
+- workflow file: `.github/workflows/studio-validation.yml`
+- workflow name: `studio-validation`
+- required job ID: `validate`
+- job display name: `studio-validation`
+- required status check: `studio-validation`
+
 - Hedef dal: yalnızca `chatgb`.
 - Değişiklikler pull request üzerinden gelmeli; doğrudan push kapalı olmalı.
 - En az iki onay istenmeli: biri `.github/CODEOWNERS` tarafından belirlenen kurucu/code owner, diğeri öneri sahibinden bağımsız reviewer.
 - Yeni commit geldiğinde eski onaylar düşürülmeli ve tüm review konuşmaları çözülmeli.
-- Required status check: `studio-validation`; dalın güncel olması zorunlu tutulmalı.
+- GitHub ruleset içinde yukarıdaki required status check seçilmeli; dalın güncel olması zorunlu tutulmalı.
 - Force push ve branch deletion yasaklanmalı.
 - Bypass listesi varsayılan olarak boş olmalı. Acil bypass gerekiyorsa kurucu onayı, gerekçe, zaman ve sonradan bağımsız review kaydı zorunlu olmalı.
 - Code owner review zorunlu tutulmalı; son push'u yapan kişinin tek başına onayı yeterli sayılmamalı.
@@ -22,4 +28,6 @@ Ruleset etkinleştirildikten sonra GitHub UI veya API üzerinden hedef dal, requ
 
 Validator, GitHub hesabının gerçekten var olduğunu veya ruleset'in yönetici tarafından uygulandığını doğrulamaz. `studio.manifest.json` politikasına göre CODEOWNERS satırlarının repository içi sözdizimini, açık kritik pattern kapsamını ve beklenen owner metnini kontrol eder.
 
-Workflow kontrolü tam YAML parser değildir. Standard library ile güvenilir biçimde incelenen alt küme; boşlukla girintilenmiş block mapping/list yapısı, düz veya tırnaklı scalar değerler, tek satırlı `uses` ve `run` alanlarıdır. Tab, anchor/alias, flow mapping, multiline `run` ve expression ile oluşturulan komutlar bu güvenlik kontrolünün desteklenen alt kümesi dışındadır; sessiz PASS yerine anlaşılır hata üretir.
+Workflow kontrolü tam YAML parser değildir. Standard library ile güvenilir biçimde incelenen alt küme; boşlukla girintilenmiş block mapping/list yapıları, düz veya tırnaklı scalar değerler ve tek satırlı `name`, `uses`, `run` alanlarıdır. Manifest bu sınırı `supported_yaml_subset` alanında yayımlar.
+
+Kritik workflow yapısında tab, flow mapping (`{...}`), flow sequence (`[...]`), anchor (`&name`), alias (`*name`), merge key (`<<:`), multiline `run: |` / `run: >` ve `${{ ... }}` expression kullanımı fail-closed reddedilir. Yorum içindeki örnekler ve komutun ortasında güvenli düz metin olarak kullanılan köşeli parantezler flow collection sayılmaz. Required job veya adımlarında `continue-on-error`, required job üzerinde `needs`/`if`, zorunlu komutlarda manifestteki failure-masking pattern'leri ve aynı display name'i taşıyan ikinci bir job da reddedilir.
