@@ -10,6 +10,8 @@ Bu repository, marka ve oyun kararlarından bağımsız, denetlenebilir AI Game 
 - [Karar protokolü](docs/studio/decision-protocol.md)
 - [Araştırma politikası](docs/studio/research-policy.md)
 - [Güvenlik politikası](docs/studio/security-policy.md)
+- [Fikrî mülkiyet politikası](docs/studio/intellectual-property-policy.md)
+- [Kalite kapıları](docs/studio/quality-gates.md)
 - [Definition of Done](docs/studio/definition-of-done.md)
 - [Agent dizini](docs/agents/index.md)
 

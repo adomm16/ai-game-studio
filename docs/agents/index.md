@@ -1,5 +1,7 @@
 # Agent Dizini
 
+Bütün profiller [Ortak Profesyonel Politika](shared-professional-policy.md) ile birlikte okunur.
+
 `FOUNDER` kurumsal bir agent değil, korunmuş nihai yetkidir.
 
 - [Studio Orchestrator](studio-orchestrator.md) — `studio-orchestrator`
