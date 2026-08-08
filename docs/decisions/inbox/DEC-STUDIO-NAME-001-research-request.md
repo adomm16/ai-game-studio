@@ -13,7 +13,7 @@ studio-orchestrator
 2026-08-08
 
 ## Source References
-GitHub Issue #4 (`DEC-STUDIO-NAME-001 — Studio name research and selection`); REC-DEC-STUDIO-NAME-001-BRIEF-001; `docs/studio/research-policy.md`; `docs/research/templates/research-request.md`
+GitHub Issue #4 (`DEC-STUDIO-NAME-001 — Studio name research and selection`); REC-DEC-STUDIO-NAME-001-BRIEF-001; `docs/studio/research-policy.md`; `docs/research/templates/research-request.md`; `docs/plans/DEC-STUDIO-NAME-001-founder-research-mandate.md`; `docs/audits/governance/DEC-STUDIO-NAME-001-initiation-audit.md`
 
 ## Conflict of Interest Declaration
 Bilinen çıkar çatışması yoktur. Araştırma sahibi kaynaklarla veya değerlendirilen kuruluşlarla mali, kişisel ya da profesyonel bağını kaynak bazında açıklamalı; etkilenmiş değerlendirmeden çekilmelidir.
@@ -62,6 +62,40 @@ Decision ID: `DEC-STUDIO-NAME-001`. Önceki kayıt: `REC-DEC-STUDIO-NAME-001-BRI
 
 Kapsam dışı: aday veya nihai isim üretmek; hukuki uygunluk kararı vermek; alan adı/kullanıcı adı almak; marka başvurusu yapmak; logo/renk üretmek; ücretli kaynak kullanmak.
 
+## Bağlayıcı kurucu araştırma kapsamı
+
+### Marka ve coğrafi hedef
+
+Araştırma, Türkiye'den yönetilen fakat küresel oyuncu, yayıncı ve yatırımcıya hitap eden ve farklı oyun türlerine genişleyebilecek profesyonel oyun stüdyosu marka hedefini esas alır. Öncelikli pazar ve yargı alanları Türkiye, Amerika Birleşik Devletleri, Birleşik Krallık, Kanada ve Avrupa Birliği'dir.
+
+### Araştırma evreni ve dönem
+
+- Katmanlı örneklem en az 150 aktif oyun stüdyosu veya yayıncı ile en az 50 yakın teknoloji, eğlence veya yaratıcı üretim markası içerir.
+- Örneklem; büyük uluslararası yayıncılar, bağımsız stüdyolar, mobil şirketler, PC/konsol stüdyoları, strateji/MMO üreticileri, yeni nesil teknoloji/yaratıcı üretim markaları, başarılı yeniden markalaşmalar ve isim/marka sorunu yaşamış örnekleri dengeli kapsar.
+- Aktiflik tanımı, dahil etme/dışlama ölçütleri, katman başına sayı ve eksik temsil Research Memo'da kaydedilir. Sonuç tam piyasa sayımı olarak sunulmaz.
+- Güncel uygunluk ve şirket durumu kesim tarihi 2026-08-08'dir.
+- İsimlendirme eğilimi dönemi 2021-01-01–2026-08-08'dir.
+- Tarihe bağlı her sonuç kontrol tarihi; değişebilir sorgular ayrıca mümkün olan saat, bölge/dil ve sorgu dizesini taşır.
+
+### Dil, alan adı ve platform kapsamı
+
+- Birinci tur zorunlu dilleri: Türkçe, İngilizce, Almanca, Fransızca, İspanyolca ve Portekizce.
+- Finalist turu zorunlu dilleri: Japonca ve Korece.
+- Dil kontrolü sözlük anlamı, telaffuz, argo, olumsuz çağrışım ve yanlış okunma riskini kapsar.
+- TLD önceliği: `.com`, `.studio`, `.games`; `.com` güçlü önceliktir fakat kalıcı uygunluk/satın alınabilirlik garantisi değildir.
+- Platform kapsamı: Steam, Epic Games Store, YouTube, Instagram, TikTok, X, Discord, Twitch ve LinkedIn.
+- Alan adı veya platform hesabı satın alınmaz, açılmaz ya da rezerve edilmez.
+
+### Ön marka taraması ve bütçe
+
+TÜRKPATENT, EUIPO, WIPO Global Brand Database, USPTO ve UKIPO ön tarama kaynaklarıdır. İlgili yargı alanı ve Nice sınıflarının kapsamı ile Kanada için gerekli resmî kaynak `legal-ip-risk-advisor` tarafından belirlenir. Sonuçlar hukuk görüşü veya tescil garantisi değildir.
+
+Birinci tur yalnız ücretsiz/resmî kaynaklar ve kamuya açık güvenilir sektör kaynaklarıyla yürütülür; ücretli veri tabanı veya hukuk danışmanı kullanılmaz. Finalist turunda en güçlü 3–5 aday için ücretli profesyonel tarama ya da hukuk danışmanı ayrı kurucu onayına sunulabilir; önceden harcama yapılamaz.
+
+### İsim araştırması kısıtları
+
+Daha sonraki proposal turları için ölçütler: tercihen bir veya iki kelime; kolay yazım/telaffuz; tek türe hapsolmama; jenerik veya taklit izleniminden kaçınma. `AI` zorunlu değildir; açık `AI Games`/`AI Studio` benzeri jenerik yapılar güçlü gerekçe olmadan önerilmemelidir. Nihai karakter/harf sınırı araştırma tamamlanmadan kesinleştirilmez. Bu Research Request isim üretmez.
+
 ## Kaynak sınıfları ve kalite ölçütleri
 
 | Kaynak sınıfı | Asgari kalite ölçütü | Kullanım sınırlaması |
@@ -76,16 +110,16 @@ Kapsam dışı: aday veya nihai isim üretmek; hukuki uygunluk kararı vermek; a
 Her kaynak kaydı: kaynak sahibi ve başlık, URL/belge kimliği, yayın tarihi veya `BULUNAMADI`, erişim tarihi, kaynak türü, çıkar çatışması, ilgili iddia, karşı kanıt, kapsam sınırlaması ve düşük/orta/yüksek güven düzeyi içermelidir. Arama motoru özetleri, kaynaksız listeler, anonim pazarlama yazıları ve üretken AI çıktıları tek başına kanıt kabul edilmez.
 
 ## Yöntem ve değişebilir bilgi protokolü
-1. Araştırma evrenini, dönemini, hedef pazarları, dilleri, platformları, TLD’leri ve yargı alanlarını önce tanımla; belirsiz olanları soru olarak yükselt.
+1. Bu kayıttaki bağlayıcı evreni, dönemi, hedef pazarları, dilleri, platformları, TLD’leri ve yargı alanlarını veri sözlüğüne aynen aktar; örneklem dahil etme/dışlama ayrıntısını araştırma başlamadan kaydet.
 2. Önce birincil/resmî kaynakları topla; ikincil kaynakları bağlam ve karşı kanıt için kullan.
 3. Her sorguyu tarih/saat, bölge/dil, sorgu dizesi ve sonuç kapsamıyla kaydet.
 4. Önemli iddiaları bağımsız ikinci bir kaynakla çapraz doğrula; doğrulanamayanı olgu olarak kullanma.
 5. Alan adı, sosyal kullanıcı adı, mağaza sonucu ve marka veri tabanı durumuna `ARAŞTIRMA-ANI GÖRÜNTÜSÜ — DEĞİŞEBİLİR` etiketi koy.
-6. Legal/IP yorumunu `legal-ip-risk-advisor` rolüne; Security/Privacy ve Ethics yorumlarını ilgili bağımsız güvence rollerine handoff et.
+6. Ayrı `Legal` ve `IP` stop-gate yorumlarını `legal-ip-risk-advisor` rolüne; ayrı `Security` ve `Privacy` stop-gate yorumlarını `security-privacy-lead` rolüne; Ethics/Accessibility advisory review'u `accessibility-ethics-reviewer` rolüne handoff et.
 7. Çelişki, veri boşluğu, örneklem yanlılığı ve düşük güveni Research Memo’da görünür tut.
 
 ## Teslim tarihi
-Kurul kapsam, öncelikli pazar/dil/TLD/yargı alanı ve ücretli kaynak politikasını onayladıktan sonra Studio Orchestrator tarafından planlanacak; şu anda `NOT SET`.
+Araştırma ve kriter paketi için planlama hedefi 2026-08-15'tir. Ağırlık kilidi 2026-08-16, üç bağımsız proposal turu 2026-08-20 ve kurucu kısa liste incelemesi 2026-08-23 olarak planlanır. Bunlar tamamlanma garantisi değildir; eksik araştırma veya doğrulama tarihi karşılamak için tamamlanmış gösterilemez.
 
 ## Kabul kriterleri
 - Research Memo, veri sözlüğü ve kaynak sicili girdileri yeniden üretilebilir sorgu ayrıntıları içerir.
@@ -95,6 +129,9 @@ Kurul kapsam, öncelikli pazar/dil/TLD/yargı alanı ve ücretli kaynak politika
 - Dil, hukuk ve güvence yorumları ilgili uzman rollere devredilir; Market Research Director uzmanlık dışı nihai hüküm vermez.
 - Eksik kritik veri `EKSİK VERİ`/`DOĞRULANMADI` olarak işaretlenir; proposal veya puanlama için hazır gösterilmez.
 - Sahte kaynak, araştırma sonucu, aday isim veya marka uygunluğu hükmü bulunmaz.
+- En az 150 oyun stüdyosu/yayıncı ve en az 50 yakın marka için katman, dahil etme ölçütü ve kontrol tarihi kayıtlıdır; çalışma tam piyasa sayımı olarak sunulmaz.
+- Birinci tur ve finalist dil kapsamı ile TLD/platform kapsamı eksiksiz izlenebilir; doğrulanmayan alanlar açıkça işaretlidir.
+- Ücretsiz ilk tur bütçe sınırı korunur; harcama veya edinim yapılmaz.
 
 ## Handoff
 `Agent ID: market-research-director`; amaç: kaynaklı Research Memo, veri sözlüğü ve kaynak sicili girdileri; girdiler: bu kayıt ve kurul kararları; kaynak/tarih/sorgu ayrıntıları; varsayımlar; karşı kanıt; açık riskler; güven düzeyi; hedef: `brand-marketing-director`, `community-localization-director`, `legal-ip-risk-advisor`, ardından `studio-orchestrator` kayıt kontrolü.
