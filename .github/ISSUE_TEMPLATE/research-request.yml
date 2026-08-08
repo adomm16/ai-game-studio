@@ -1,0 +1,22 @@
+name: Araştırma talebi
+description: Araştırma talebi
+title: "[Araştırma talebi] "
+body:
+  - type: textarea
+    id: field1
+    attributes:
+      label: Araştırma sorusu
+    validations:
+      required: true
+  - type: textarea
+    id: field2
+    attributes:
+      label: Karar bağlantısı
+    validations:
+      required: true
+  - type: textarea
+    id: field3
+    attributes:
+      label: Kapsam ve kabul kriterleri
+    validations:
+      required: true

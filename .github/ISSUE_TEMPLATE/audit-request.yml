@@ -1,0 +1,22 @@
+name: Denetim talebi
+description: Denetim talebi
+title: "[Denetim talebi] "
+body:
+  - type: textarea
+    id: field1
+    attributes:
+      label: Denetim kapsamı
+    validations:
+      required: true
+  - type: textarea
+    id: field2
+    attributes:
+      label: Bağımsız denetçi rolü
+    validations:
+      required: true
+  - type: textarea
+    id: field3
+    attributes:
+      label: Kanıt ve çıkış kriterleri
+    validations:
+      required: true

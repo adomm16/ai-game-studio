@@ -1,0 +1,22 @@
+name: Üretim görevi
+description: Üretim görevi
+title: "[Üretim görevi] "
+body:
+  - type: textarea
+    id: field1
+    attributes:
+      label: Amaç
+    validations:
+      required: true
+  - type: textarea
+    id: field2
+    attributes:
+      label: Kabul kriterleri
+    validations:
+      required: true
+  - type: textarea
+    id: field3
+    attributes:
+      label: Bağımlılıklar ve riskler
+    validations:
+      required: true
