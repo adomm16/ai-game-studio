@@ -25,7 +25,8 @@ class StudioValidatorTests(unittest.TestCase):
         finally:
             tmp.cleanup()
 
-    def add_decision_record(self, dst, name, kind, record_id, author, previous="BRIEF-1", target="Yok"):
+    def add_decision_record(self, dst, name, kind, record_id, author,
+                            previous="NOT APPLICABLE", target="NOT APPLICABLE", extra=""):
         body = f"""# {kind}
 
 ## Decision ID
@@ -57,18 +58,25 @@ Next
 
 ## Independence Declaration
 Bağımsız
+
+{extra}
 """
         path = dst / "docs/decisions/active" / name
         path.write_text(body, encoding="utf-8")
 
     def add_complete_decision(self, dst, final_previous=None):
-        self.add_decision_record(dst, "proposal-1.md", "Proposal", "P-1", "art-director")
-        self.add_decision_record(dst, "proposal-2.md", "Proposal", "P-2", "technical-director")
-        self.add_decision_record(dst, "proposal-3.md", "Proposal", "P-3", "finance-monetization-director")
-        self.add_decision_record(dst, "critique.md", "Critique", "C-1", "game-director", target="P-1")
-        self.add_decision_record(dst, "red-team.md", "Red-Team Report", "RT-1", "independent-red-team-auditor", target="P-1,P-2,P-3")
-        previous = final_previous or "P-1,P-2,P-3,C-1,RT-1"
-        self.add_decision_record(dst, "final.md", "Final Decision Record", "F-1", "studio-orchestrator", previous=previous)
+        self.add_decision_record(dst, "brief.md", "Decision Brief", "B-1", "studio-orchestrator")
+        self.add_decision_record(dst, "research.md", "Research Memo", "R-1", "market-research-director", previous="B-1", target="B-1")
+        owners = ("art-director", "technical-director", "finance-monetization-director")
+        for number, owner in enumerate(owners, 1):
+            self.add_decision_record(dst, f"proposal-{number}.md", "Proposal", f"P-{number}", owner, previous="B-1,R-1", target="B-1,R-1")
+            critique_name = "critique.md" if number == 1 else f"critique-{number}.md"
+            self.add_decision_record(dst, critique_name, "Critique", f"C-{number}", "game-director", previous=f"P-{number}", target=f"P-{number}")
+            self.add_decision_record(dst, f"rebuttal-{number}.md", "Rebuttal", f"RB-{number}", owner, previous=f"P-{number},C-{number}", target=f"C-{number}")
+        self.add_decision_record(dst, "scorecard.md", "Scorecard", "S-1", "executive-producer", previous="RB-1,RB-2,RB-3", target="P-1,P-2,P-3", extra="## Stop-gates\nPASS")
+        self.add_decision_record(dst, "red-team.md", "Red-Team Report", "RT-1", "independent-red-team-auditor", previous="S-1", target="P-1,P-2,P-3")
+        all_prior = "B-1,R-1,P-1,P-2,P-3,C-1,C-2,C-3,RB-1,RB-2,RB-3,S-1,RT-1"
+        self.add_decision_record(dst, "final.md", "Final Decision Record", "F-1", "studio-orchestrator", previous=final_previous or all_prior, target="RT-1", extra="## Durum\nDRAFT")
 
     def test_repository_is_valid_and_emits_semantic_warnings(self):
         errors, warnings = validate_repository(ROOT)
@@ -228,7 +236,7 @@ Bağımsız
             self.add_complete_decision(dst)
             path = dst / "docs/decisions/active/red-team.md"
             path.write_text(path.read_text(encoding="utf-8").replace("independent-red-team-auditor", "technical-director"), encoding="utf-8")
-        self.assertTrue(any("red-team report yazarı proposal sahibiyle aynı" in error for error in self.errors_after(mutate)))
+        self.assertTrue(any("red-team author must be" in error for error in self.errors_after(mutate)))
 
     def test_final_references_every_prior_record(self):
         def mutate(dst):
@@ -261,6 +269,230 @@ Bağımsız
         self.assertGreaterEqual(len(errors), 3)
         self.assertTrue(any("CODEOWNERS" in error for error in errors))
         self.assertTrue(any("studio-validation.yml" in error for error in errors))
+
+    def decision_errors(self, mutate):
+        def wrapped(dst):
+            self.add_complete_decision(dst)
+            mutate(dst)
+        return self.errors_after(wrapped)
+
+    def test_decision_brief_missing(self):
+        self.assertTrue(any("decision brief" in e for e in self.decision_errors(lambda d: (d / "docs/decisions/active/brief.md").unlink())))
+
+    def test_research_memo_missing(self):
+        self.assertTrue(any("research memo" in e for e in self.decision_errors(lambda d: (d / "docs/decisions/active/research.md").unlink())))
+
+    def test_only_two_proposals(self):
+        def mutate(d):
+            for name in ("proposal-3.md", "critique-3.md", "rebuttal-3.md"):
+                (d / "docs/decisions/active" / name).unlink()
+        self.assertTrue(any("proposal" in e for e in self.decision_errors(mutate)))
+
+    def test_three_proposals_same_agent(self):
+        def mutate(d):
+            for name in ("proposal-2.md", "proposal-3.md"):
+                path = d / "docs/decisions/active" / name
+                text = path.read_text(encoding="utf-8")
+                text = text.replace("technical-director", "art-director").replace("finance-monetization-director", "art-director")
+                path.write_text(text, encoding="utf-8")
+        self.assertTrue(any("üç farklı proposal sahibi" in e for e in self.decision_errors(mutate)))
+
+    def test_one_proposal_critique_missing(self):
+        self.assertTrue(any("proposal has no critique" in e for e in self.decision_errors(lambda d: (d / "docs/decisions/active/critique-2.md").unlink())))
+
+    def test_one_proposal_rebuttal_missing(self):
+        self.assertTrue(any("proposal has no rebuttal" in e for e in self.decision_errors(lambda d: (d / "docs/decisions/active/rebuttal-2.md").unlink())))
+
+    def test_rebuttal_wrong_agent(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/rebuttal-2.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("technical-director", "game-director"), encoding="utf-8")
+        self.assertTrue(any("rebuttal author" in e for e in self.decision_errors(mutate)))
+
+    def test_scorecard_missing(self):
+        self.assertTrue(any("scorecard" in e for e in self.decision_errors(lambda d: (d / "docs/decisions/active/scorecard.md").unlink())))
+
+    def test_red_team_missing(self):
+        self.assertTrue(any("red-team report" in e for e in self.decision_errors(lambda d: (d / "docs/decisions/active/red-team.md").unlink())))
+
+    def test_red_team_wrong_role(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/red-team.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("independent-red-team-auditor", "game-director"), encoding="utf-8")
+        self.assertTrue(any("red-team author must be" in e for e in self.decision_errors(mutate)))
+
+    def test_red_team_does_not_target_all_proposals(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/red-team.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("P-1,P-2,P-3", "P-1,P-2"), encoding="utf-8")
+        self.assertTrue(any("red-team does not target every proposal" in e for e in self.decision_errors(mutate)))
+
+    def test_final_decision_missing(self):
+        self.assertTrue(any("final decision record" in e for e in self.decision_errors(lambda d: (d / "docs/decisions/active/final.md").unlink())))
+
+    def test_empty_review_target(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/critique.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("## Review Target\nP-1", "## Review Target\n"), encoding="utf-8")
+        self.assertTrue(any("empty" in e or "missing or empty" in e for e in self.decision_errors(mutate)))
+
+    def test_unknown_record_reference(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/research.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("## Review Target\nB-1", "## Review Target\nUNKNOWN"), encoding="utf-8")
+        self.assertTrue(any("unknown Record ID" in e for e in self.decision_errors(mutate)))
+
+    def test_critique_targets_only_proposals(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/critique.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("## Review Target\nP-1", "## Review Target\nP-1,R-1"), encoding="utf-8")
+        self.assertTrue(any("critique must target only" in e for e in self.decision_errors(mutate)))
+
+    def test_scorecard_must_evaluate_all_proposals(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/scorecard.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("P-1,P-2,P-3", "P-1,P-2"), encoding="utf-8")
+        self.assertTrue(any("scorecard does not evaluate every proposal" in e for e in self.decision_errors(mutate)))
+
+    def test_rebuttal_must_reference_related_critique(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/rebuttal-2.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("P-2,C-2", "P-2,C-1"), encoding="utf-8")
+        self.assertTrue(any("related critique" in e for e in self.decision_errors(mutate)))
+
+    def test_cross_decision_reference(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/brief.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("DEC-TEST", "DEC-OTHER"), encoding="utf-8")
+        self.assertTrue(any("cross-Decision ID" in e for e in self.decision_errors(mutate)))
+
+    def test_duplicate_record_id(self):
+        def mutate(d):
+            path = d / "docs/decisions/active/proposal-2.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("P-2", "P-1", 1), encoding="utf-8")
+        self.assertTrue(any("Duplicate Record ID" in e for e in self.decision_errors(mutate)))
+
+    def test_stop_gate_fail_cannot_be_approved(self):
+        def mutate(d):
+            score = d / "docs/decisions/active/scorecard.md"
+            score.write_text(score.read_text(encoding="utf-8").replace("PASS", "FAIL"), encoding="utf-8")
+            final = d / "docs/decisions/active/final.md"
+            final.write_text(final.read_text(encoding="utf-8").replace("DRAFT", "APPROVED"), encoding="utf-8")
+        self.assertTrue(any("blocking stop-gate" in e for e in self.decision_errors(mutate)))
+
+    def test_stop_gate_not_reviewed_cannot_be_approved(self):
+        def mutate(d):
+            score = d / "docs/decisions/active/scorecard.md"
+            score.write_text(score.read_text(encoding="utf-8").replace("PASS", "NOT REVIEWED"), encoding="utf-8")
+            final = d / "docs/decisions/active/final.md"
+            final.write_text(final.read_text(encoding="utf-8").replace("DRAFT", "APPROVED"), encoding="utf-8")
+        self.assertTrue(any("blocking stop-gate" in e for e in self.decision_errors(mutate)))
+
+    def test_founder_topic_requires_founder_decision(self):
+        def mutate(d):
+            brief = d / "docs/decisions/active/brief.md"
+            brief.write_text(brief.read_text(encoding="utf-8") + "\n## Konu\nStüdyo adı\n", encoding="utf-8")
+        self.assertTrue(any("requires Founder Decision" in e for e in self.decision_errors(mutate)))
+
+    def test_codeowners_wrong_founder_owner(self):
+        def mutate(d):
+            path = d / ".github/CODEOWNERS"
+            path.write_text(path.read_text(encoding="utf-8").replace("@adomm16", "@wrong"), encoding="utf-8")
+        self.assertTrue(any("founder owner missing" in e for e in self.errors_after(mutate)))
+
+    def test_codeowners_global_rule_missing(self):
+        def mutate(d):
+            path = d / ".github/CODEOWNERS"
+            path.write_text("\n".join(line for line in path.read_text(encoding="utf-8").splitlines() if not line.startswith("* ")), encoding="utf-8")
+        self.assertTrue(any("global '*' rule" in e for e in self.errors_after(mutate)))
+
+    def test_codeowners_critical_pattern_missing(self):
+        def mutate(d):
+            path = d / ".github/CODEOWNERS"
+            path.write_text(path.read_text(encoding="utf-8").replace("/docs/audits/ @adomm16\n", ""), encoding="utf-8")
+        self.assertTrue(any("/docs/audits/" in e for e in self.errors_after(mutate)))
+
+    def test_codeowners_owner_only_in_comment(self):
+        def mutate(d):
+            path = d / ".github/CODEOWNERS"
+            path.write_text("# @adomm16\n* @wrong\n", encoding="utf-8")
+        self.assertTrue(any("founder owner missing" in e for e in self.errors_after(mutate)))
+
+    def test_codeowners_empty_owner(self):
+        def mutate(d):
+            path = d / ".github/CODEOWNERS"
+            path.write_text(path.read_text(encoding="utf-8") + "\n/empty/\n", encoding="utf-8")
+        self.assertTrue(any("owner missing" in e for e in self.errors_after(mutate)))
+
+    def test_codeowners_invalid_pattern(self):
+        def mutate(d):
+            path = d / ".github/CODEOWNERS"
+            path.write_text(path.read_text(encoding="utf-8") + "\ndocs\\bad @adomm16\n", encoding="utf-8")
+        self.assertTrue(any("invalid or ineffective pattern" in e for e in self.errors_after(mutate)))
+
+    def workflow_errors(self, replace_from, replace_to):
+        def mutate(d):
+            path = d / ".github/workflows/studio-validation.yml"
+            path.write_text(path.read_text(encoding="utf-8").replace(replace_from, replace_to), encoding="utf-8")
+        return self.errors_after(mutate)
+
+    def test_workflow_pull_request_missing(self):
+        self.assertTrue(any("pull_request" in e for e in self.workflow_errors("  pull_request:\n", "")))
+
+    def test_workflow_wrong_name(self):
+        self.assertTrue(any("Workflow name" in e for e in self.workflow_errors("name: studio-validation", "name: wrong")))
+
+    def test_workflow_validator_command_missing(self):
+        self.assertTrue(any("validate_studio.py" in e for e in self.workflow_errors("python scripts/validate_studio.py", "python -V")))
+
+    def test_workflow_unit_command_missing(self):
+        self.assertTrue(any("unittest discover" in e for e in self.workflow_errors("python -m unittest discover -s tests -v", "python -V")))
+
+    def test_workflow_command_only_in_comment(self):
+        self.assertTrue(any("validate_studio.py" in e for e in self.workflow_errors("run: python scripts/validate_studio.py", "# run: python scripts/validate_studio.py")))
+
+    def test_workflow_masks_failure(self):
+        self.assertTrue(any("masks failures" in e for e in self.workflow_errors("python scripts/validate_studio.py", "python scripts/validate_studio.py || true")))
+
+    def test_workflow_continue_on_error(self):
+        self.assertTrue(any("continue-on-error" in e for e in self.workflow_errors("runs-on: ubuntu-latest", "runs-on: ubuntu-latest\n    continue-on-error: true")))
+
+    def test_workflow_checkout_missing(self):
+        self.assertTrue(any("checkout" in e for e in self.workflow_errors("actions/checkout@v4", "example/no-checkout@v4")))
+
+    def test_workflow_python_setup_missing(self):
+        self.assertTrue(any("Python setup" in e for e in self.workflow_errors("actions/setup-python@v5", "example/no-python@v5")))
+
+    def test_valid_codeowners_and_workflow_positive(self):
+        self.assertEqual([], validate(ROOT))
+
+    def test_agent_profile_identical_section_emits_warning(self):
+        tmp, dst = self.fixture()
+        try:
+            for path in (dst / "docs/agents").glob("*.md"):
+                if path.name in {"index.md", "shared-professional-policy.md"}:
+                    continue
+                text = path.read_text(encoding="utf-8")
+                start = text.index("## Temel misyon")
+                end = text.index("## Uzmanlık alanları")
+                path.write_text(text[:start] + "## Temel misyon\nAynı operasyonel metin.\n\n" + text[end:], encoding="utf-8")
+            errors, warnings = validate_repository(dst)
+            self.assertEqual([], errors)
+            self.assertTrue(any("Agent profile regression" in w for w in warnings))
+        finally:
+            tmp.cleanup()
+
+    def test_founder_authority_scan_covers_readme(self):
+        def mutate(d):
+            path = d / "README.md"
+            path.write_text(path.read_text(encoding="utf-8") + "\nStudio Orchestrator Stüdyo adı kararını verebilir.\n", encoding="utf-8")
+        self.assertTrue(any("README.md" in e and "Kurucu yetkisi" in e for e in self.errors_after(mutate)))
+
+    def test_founder_authority_audit_quote_is_excluded(self):
+        def mutate(d):
+            path = d / "docs/audits/governance/example-history.md"
+            path.write_text("Geçmiş alıntı: Studio Orchestrator Stüdyo adı kararını verebilir.\n", encoding="utf-8")
+        self.assertEqual([], self.errors_after(mutate))
 
 
 if __name__ == "__main__":

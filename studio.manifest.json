@@ -108,5 +108,49 @@
     {"supervisor": "studio-orchestrator", "role": "accessibility-ethics-reviewer"},
     {"supervisor": "studio-orchestrator", "role": "quality-assurance-director"},
     {"supervisor": "studio-orchestrator", "role": "security-privacy-lead"}
-  ]
+  ],
+  "decision_chain": {
+    "stages": {
+      "decision brief": {"minimum": 1, "maximum": 1},
+      "research memo": {"minimum": 1},
+      "proposal": {"minimum": 3},
+      "critique": {"minimum": 3},
+      "rebuttal": {"minimum": 3},
+      "scorecard": {"minimum": 1},
+      "red-team report": {"minimum": 1},
+      "final decision record": {"minimum": 1, "maximum": 1}
+    },
+    "proposal_minimum_distinct_authors": 3,
+    "red_team_author": "independent-red-team-auditor",
+    "not_applicable_value": "NOT APPLICABLE",
+    "approved_status": "APPROVED",
+    "blocking_stop_gates": ["FAIL", "NOT REVIEWED"]
+  },
+  "repository_protection": {
+    "founder_github_owner": "@adomm16",
+    "require_global_owner_rule": true,
+    "require_explicit_critical_patterns": true,
+    "critical_codeowners_patterns": [
+      "/AGENTS.md",
+      "/studio.manifest.json",
+      "/docs/studio/",
+      "/docs/agents/",
+      "/docs/decisions/approved/",
+      "/docs/audits/",
+      "/.github/",
+      "/scripts/validate_studio.py",
+      "/tests/"
+    ],
+    "validation_workflow_name": "studio-validation",
+    "required_status_check": "studio-validation",
+    "required_push_branches": ["chatgb", "fix/**"],
+    "required_validation_commands": [
+      "python scripts/validate_studio.py",
+      "python -m unittest discover -s tests -v"
+    ]
+  },
+  "agent_profile_regression": {
+    "allowed_shared_sections": ["Yetkileri"],
+    "warn_when_identical_across_all_profiles": true
+  }
 }

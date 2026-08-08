@@ -1,4 +1,4 @@
-name: Studio validation
+name: studio-validation
 
 on:
   pull_request:

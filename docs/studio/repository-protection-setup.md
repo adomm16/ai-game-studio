@@ -17,3 +17,9 @@ Bu belge GitHub yöneticisinin `chatgb` dalına uygulaması gereken ruleset'i ta
 ## Yönetici doğrulaması
 
 Ruleset etkinleştirildikten sonra GitHub UI veya API üzerinden hedef dal, required check adı, review sayısı, code-owner review, force-push/deletion ve bypass ayarları ekran görüntüsü ya da dışa aktarılmış JSON ile kaydedilmelidir. Bu kanıt bağımsız re-audit'e eklenmelidir.
+
+## Repository içi statik doğrulamanın sınırı
+
+Validator, GitHub hesabının gerçekten var olduğunu veya ruleset'in yönetici tarafından uygulandığını doğrulamaz. `studio.manifest.json` politikasına göre CODEOWNERS satırlarının repository içi sözdizimini, açık kritik pattern kapsamını ve beklenen owner metnini kontrol eder.
+
+Workflow kontrolü tam YAML parser değildir. Standard library ile güvenilir biçimde incelenen alt küme; boşlukla girintilenmiş block mapping/list yapısı, düz veya tırnaklı scalar değerler, tek satırlı `uses` ve `run` alanlarıdır. Tab, anchor/alias, flow mapping, multiline `run` ve expression ile oluşturulan komutlar bu güvenlik kontrolünün desteklenen alt kümesi dışındadır; sessiz PASS yerine anlaşılır hata üretir.
