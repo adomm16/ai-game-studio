@@ -1,0 +1,25 @@
+name: Studio validation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - chatgb
+      - "fix/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: studio-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate governance repository
+        run: python scripts/validate_studio.py
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v

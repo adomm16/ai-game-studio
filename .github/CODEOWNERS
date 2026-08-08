@@ -1,0 +1,13 @@
+# Repository governance owner, derived from origin:
+# https://github.com/adomm16/ai-game-studio.git
+* @adomm16
+
+/AGENTS.md @adomm16
+/studio.manifest.json @adomm16
+/docs/studio/ @adomm16
+/docs/agents/ @adomm16
+/docs/decisions/approved/ @adomm16
+/docs/audits/ @adomm16
+/.github/ @adomm16
+/scripts/validate_studio.py @adomm16
+/tests/ @adomm16
