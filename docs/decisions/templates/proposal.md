@@ -1,17 +1,30 @@
 # Proposal
 
-## Öneri sahibi
+## Decision ID
 
-## Bağımsızlık beyanı
+## Record ID
 
-## Seçenek
+## Author Agent ID
 
-## Kanıt
+## Created Date
 
-## Maliyet
+## Source References
 
-## Risk
+## Conflict of Interest Declaration
 
-## Geri döndürülebilirlik
+## Previous Stage References
 
-## Başarı ölçütü
+## Next Stage
+Critique
+
+## Review Target
+Decision Brief ve Research Memo Record ID'leri
+
+## Independence Declaration
+Bu proposal diğer proposal sahiplerinden bağımsız hazırlanmıştır.
+
+## Öneri, gerekçe ve alternatifler
+
+## Maliyet, risk ve geri alma
+
+## Başarı ölçümü

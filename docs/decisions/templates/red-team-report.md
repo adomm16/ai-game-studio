@@ -1,13 +1,30 @@
-# Red Team Report
+# Red-Team Report
 
-## Bağımsızlık beyanı
+## Decision ID
 
-## Başarısızlık senaryoları
+## Record ID
 
-## Kötüye kullanım
+## Author Agent ID
 
-## Erken uyarı işaretleri
+## Created Date
 
-## Azaltımlar
+## Source References
 
-## Durdurma koşulları
+## Conflict of Interest Declaration
+
+## Previous Stage References
+
+## Next Stage
+Final Decision Record
+
+## Review Target
+Proposal Record ID'leri ve Scorecard Record ID
+
+## Independence Declaration
+Yazar hiçbir proposal'ın sahibi değildir ve sonucu Studio Orchestrator onaylamaz.
+
+## Başarısızlık ve kötüye kullanım senaryoları
+
+## Kontrol atlatma ve karşı kanıt
+
+## Açık riskler ve stop-gate tavsiyesi

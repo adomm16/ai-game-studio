@@ -1,15 +1,29 @@
 # Research Memo
 
-## Araştırma sorusu
+## Decision ID
 
-## Yöntem
+## Record ID
 
-## Kaynaklar ve tarihler
+## Author Agent ID
 
-## Bulgular
+## Created Date
 
-## Çelişkiler
+## Source References
 
-## Sınırlamalar
+## Conflict of Interest Declaration
 
-## Güven düzeyi
+## Previous Stage References
+
+## Next Stage
+Proposal
+
+## Review Target
+Decision Brief Record ID
+
+## Independence Declaration
+
+## Araştırma sorusu ve yöntem
+
+## Bulgular, karşı kanıt ve sınırlamalar
+
+## Yayın tarihi, erişim tarihi ve güven düzeyi

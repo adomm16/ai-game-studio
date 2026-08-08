@@ -1,25 +1,35 @@
 # Final Decision Record
 
-## Karar Kimliği
+## Decision ID
 
-## Durum
+## Record ID
 
-## Tavsiye
+## Author Agent ID
 
-## Alternatifler
+## Created Date
 
-## Araştırma
+## Source References
 
-## Eleştiriler ve rebuttal
+## Conflict of Interest Declaration
 
-## Puanlama
+## Previous Stage References
+Bütün Decision Brief, Research Memo, Proposal, Critique, Rebuttal, Scorecard ve Red-Team Record ID'leri
 
-## Red-team sonucu
+## Next Stage
+Implementation veya Closed
 
-## Riskler
+## Review Target
+Kurucu ya da yetkili bağımsız karar sahibi
 
-## Kurucu kararı
+## Independence Declaration
+Sentez hiçbir bağımsız bulguyu değiştirmemiş veya bastırmamıştır.
 
-## Onay tarihi
+## Durum ve tavsiye
 
-## Uygulama ve geri alma
+## Alternatifler ve karşı görüşler
+
+## Puanlama ve stop-gates
+
+## Kurucu kararı ve onay tarihi
+
+## Uygulama, doğrulama ve geri alma
