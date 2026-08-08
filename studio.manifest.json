@@ -1,0 +1,9 @@
+{
+  "schema_version": "0.1",
+  "system": "neutral-ai-game-studio-os",
+  "status": "bootstrap",
+  "default_branch": "chatgb",
+  "protected_founder_authority": true,
+  "agent_count": 29,
+  "decisions_require_evidence": true
+}
