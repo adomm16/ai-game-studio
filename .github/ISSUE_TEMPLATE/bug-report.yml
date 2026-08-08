@@ -1,0 +1,22 @@
+name: Hata raporu
+description: Hata raporu
+title: "[Hata raporu] "
+body:
+  - type: textarea
+    id: field1
+    attributes:
+      label: Sorun
+    validations:
+      required: true
+  - type: textarea
+    id: field2
+    attributes:
+      label: Yeniden üretme adımları
+    validations:
+      required: true
+  - type: textarea
+    id: field3
+    attributes:
+      label: Beklenen davranış
+    validations:
+      required: true

@@ -1,0 +1,22 @@
+name: Karar talebi
+description: Karar talebi
+title: "[Karar talebi] "
+body:
+  - type: textarea
+    id: field1
+    attributes:
+      label: Karar ihtiyacı
+    validations:
+      required: true
+  - type: textarea
+    id: field2
+    attributes:
+      label: Başarı kriterleri
+    validations:
+      required: true
+  - type: textarea
+    id: field3
+    attributes:
+      label: Kurucu yetkisi kontrolü
+    validations:
+      required: true

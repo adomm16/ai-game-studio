@@ -1,0 +1,4 @@
+# Kurucu gerçek GitHub kullanıcılarını onayladıktan sonra CODEOWNERS olarak etkinleştirin.
+* @FOUNDER_PLACEHOLDER
+/docs/studio/security-policy.md @SECURITY_OWNER_PLACEHOLDER
+/docs/studio/intellectual-property-policy.md @LEGAL_OWNER_PLACEHOLDER
