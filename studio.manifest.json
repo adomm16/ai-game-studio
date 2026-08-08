@@ -35,6 +35,7 @@
     "docs/audits/governance/studio-os-v0.1-audit.md",
     "docs/audits/governance/studio-os-v0.1-remediation.md",
     "docs/audits/governance/studio-os-v0.1-final-p1-remediation.md",
+    "docs/audits/governance/studio-os-v0.1-release-gate-remediation.md",
     "docs/decisions/index.md",
     "docs/decisions/templates/decision-brief.md",
     "docs/decisions/templates/research-memo.md",

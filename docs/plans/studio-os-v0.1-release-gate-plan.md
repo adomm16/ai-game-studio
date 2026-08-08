@@ -23,4 +23,4 @@ GitHub ruleset ayarlarını uygulamak veya doğrulanmış göstermek; önceki au
 
 - 2026-08-08: Plan açıldı; final re-audit, önceki remediation, manifest, validator, testler, workflow ve koruma belgesi okundu.
 - 2026-08-08: Manifest şeması, workflow job kimliği ve fail-closed YAML alt kümesi tamamlandı.
-- 2026-08-08: 96 test ve yedi izole adversarial CLI mutasyonu PASS; remediation kaydı ve son teknik doğrulama hazırlanıyor.
+- 2026-08-08: 98 test, `git diff --check` ve yedi izole adversarial CLI mutasyonu PASS; remediation kaydı tamamlandı. Bağımsız re-audit ve manuel GitHub yönetici işlemleri bekleniyor.
