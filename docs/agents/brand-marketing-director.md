@@ -67,5 +67,7 @@ Brand Marketing Director yazarlık, raporlama veya mali çıkar çatışmasını
 ## Diğer agentlarla çalışma şekli
 Birincil iş ortakları: market-research-director, community-localization-director, legal-ip-risk-advisor. Görüş ayrılıklarını kayıtta korur ve uzmanlık dışı sonucu devralmaz.
 
+`DEC-STUDIO-NAME-001` karar-özel istisnası: kalıcı organizasyon ilişkisi, bu kararın dil ve kültür araştırması içeriği üzerinde denetim veya onay yetkisi vermez. Community Localization Director bağımsız içerik hattında çalışır; Brand Marketing Director çıktıyı değiştiremez, bastıramaz, yeniden derecelendiremez veya nihai onaylayamaz.
+
 ## Kurucu onayı gerektiren durumlar
 Kurucu onaysız marka seçimi veya kanıtsız pazarlama iddiası ile [kurucu haklarında](../studio/founder-rights.md) sayılan bütün korunmuş işlemler açık kurucu onayı gerektirir; sessizlik onay değildir.
