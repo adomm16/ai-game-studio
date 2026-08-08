@@ -1,41 +1,54 @@
 # DEC-STUDIO-NAME-001 Kaynak Sicili
 
-## Kapsam
+## Başlangıç durumu ve kapsam
 
-Bu sicil şu anda yalnız araştırma yöntemini kurmak için kullanılan resmî kaynakları içerir. Herhangi bir aday isim, marka uygunluğu sonucu, alan adı veya kullanıcı adı sorgusu içermez. Yeni kayıtlar append-only mantığıyla eklenir; değişiklik eski satırı silmez.
+Bu belge gerçek araştırma sonucu içermeyen boş sicil şablonu ve kayıt kurallarıdır. Aşağıdaki tablo başlık dışında satır içermez. Yöntem belgelerinde anılan resmî bağlantılar bu sicilde gerçek kaynak kaydı oluşturmaz; araştırma yürütmesi başladığında yetkili agent tarafından erişilip doğrulanarak yeni Source ID ile kaydedilir.
 
-## Zorunlu kayıt şeması
+Bu görevde aday isim, marka, alan adı, sosyal kullanıcı adı, pazar örneği veya uygunluk sonucu toplanmamıştır.
+
+## Zorunlu alanlar ve kurallar
 
 | Alan | Kural |
 |---|---|
 | Source ID | `SRC-DEC-STUDIO-NAME-001-NNN` biçiminde benzersiz kimlik |
-| Kurum/yazar | Kaynağın sorumlu kurumu veya yazarı |
-| Başlık | Kaynaktaki başlık |
-| URL/belge kimliği | Doğrudan kaynak; arama sonucu sayfası değil |
-| Yayın/değişiklik tarihi | Kaynakta yoksa `BULUNAMADI` |
-| Erişim | ISO tarih-saat ve saat dilimi |
-| Tür | Resmî sınıflandırma, resmî veritabanı, resmî rehber, birincil kayıt veya nitelikli ikincil |
-| Yargı/locale | Kapsanan ülke, kurum ve dil |
-| Sorgu/seçim yöntemi | Yeniden üretilebilir sorgu, filtre veya belge bölümü; uygulanmazsa `NOT APPLICABLE` |
-| Desteklenen iddia | Kaynağın doğrudan desteklediği dar iddia |
-| Resmî veri | Kaynaktan aktarılan alan; yorum eklenmez |
-| Araştırmacı çıkarımı | Varsa `INFERENCE:` etiketi ve gerekçe |
-| Karşı kanıt/sınırlama | Kapsam dışı ve garanti vermeyen yönler |
-| Çıkar çatışması | Bilinen ilişki veya `BİLİNEN YOK` |
-| Güven | DÜŞÜK/ORTA/YÜKSEK ve kısa gerekçe |
-| Yeniden kontrol | Tarih/olay eşiği |
-| Durum | CURRENT, STALE, SUPERSEDED veya UNVERIFIED |
+| Decision ID | Daima `DEC-STUDIO-NAME-001` |
+| Research Workstream | Pazar, örneklem, localization, Legal/IP, sınıflandırma veya diğer onaylı iş kolu |
+| Agent ID | Kaydı oluşturan sorumlu agent |
+| Source Name | Kaynağın görünen adı/başlığı |
+| Source Type | Resmî veritabanı, resmî rehber, birincil kayıt veya nitelikli ikincil gibi kaynak türü |
+| URL or Official Record Identifier | Doğrudan URL veya yetkili kayıt kimliği; arama özeti değil |
+| Publisher/Institution | Yayınlayan kişi/kurum; Source Name'den ayrı tutulur |
+| Access Date | ISO `YYYY-MM-DD` |
+| Access Time | Saat, dakika, saniye ve saat dilimi; elde edilemiyorsa `NOT AVAILABLE` ve sınırlama |
+| Data Date | Kaynağın yayın/değişiklik/veri tarihi; yoksa `NOT FOUND` |
+| Country/Jurisdiction | Ülke, yargı alanı ve gerekiyorsa locale |
+| Supported Claim | Kaynağın doğrudan desteklediği dar iddia |
+| Primary/Secondary Classification | `PRIMARY` veya `SECONDARY`; gerekçe Notes içinde |
+| Confidence Level | `LOW`, `MEDIUM` veya `HIGH`; gerekçe Notes içinde |
+| Conflict of Interest Declaration | Bilinen ilişki veya `NONE KNOWN` |
+| Volatility/Changeability Status | `STABLE`, `PERIODICALLY_CHANGEABLE`, `HIGHLY_CHANGEABLE` veya `UNKNOWN` |
+| Recheck Date | ISO tarih veya olay eşiği; uygulanamazsa `NOT APPLICABLE` |
+| Evidence Allocation | Kanıt kimliği, birincil ölçüt ve varsa ayrı gerekçeli ikincil etki; gate/puan kullanımı |
+| Notes | Sorgu, filtre, resmî veri, normalizasyon ve gerekçeler |
+| Limitations | Kapsam dışı, karşı kanıt, belirsizlik ve garanti vermeyen yönler |
+| Review Status | `UNREVIEWED`, `REVIEWED`, `NEEDS_RECHECK` veya `REJECTED` |
+| Reviewer Agent ID | Reviewer agent; incelenmediyse `NOT ASSIGNED` |
 
-## Kurulum kaynakları
+Hiçbir zorunlu alan boş bırakılamaz. Uygulanmayan alan `NOT APPLICABLE`, bulunamayan veri `NOT FOUND`, doğrulanamayan veri `NOT VERIFIED` olarak yazılır; bunlar gerçek değer yerine geçmez. Resmî veri ile araştırmacı çıkarımı Notes içinde ayrı tutulur ve çıkarım `INFERENCE:` etiketi taşır.
 
-| Source ID | Kurum/yazar | Başlık | URL/belge kimliği | Yayın/değişiklik tarihi | Erişim | Tür | Yargı/locale | Sorgu/seçim yöntemi | Desteklenen iddia | Resmî veri | Araştırmacı çıkarımı | Karşı kanıt/sınırlama | Çıkar çatışması | Güven | Yeniden kontrol | Durum |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| SRC-DEC-STUDIO-NAME-001-001 | WIPO | Nice Classification | https://www.wipo.int/en/web/classification-nice/index | BULUNAMADI | 2026-08-08T17:40:50+03:00 | Resmî sınıflandırma ana sayfası | Uluslararası / EN | Ana sayfa ve yürürlükteki NCL edition/version | NCL'nin marka tescili için mal ve hizmet sınıflandırması olduğu ve düzenli sürümlendiği | NCL'nin amacı ve sürüm erişimi | INFERENCE: yöntem otoritesi olarak kullanılmalı | Belirli faaliyet için sınıf veya tescil sonucu vermez | BİLİNEN YOK | YÜKSEK — birincil kurum | Her sınıf çalışması öncesi edition/version | CURRENT |
-| SRC-DEC-STUDIO-NAME-001-002 | WIPO | Frequently Asked Questions: Nice Classification | https://www.wipo.int/en/web/classification-nice/faq | BULUNAMADI | 2026-08-08T17:40:50+03:00 | Resmî rehber | Uluslararası / EN | NCL yapısı bölümü | NCL'nin sınıf listesi, açıklayıcı notlar ve alfabetik listeden oluştuğu | Sınıflandırmanın resmî bileşenleri | INFERENCE: başlık tek başına yeterli değildir | Rehber belirli faaliyete kesin sınıf atamaz | BİLİNEN YOK | YÜKSEK — birincil kurum | WIPO sürüm değişikliğinde | CURRENT |
-| SRC-DEC-STUDIO-NAME-001-003 | CIPO / ISED Canada | Search intellectual property databases | https://www.ised-isde.canada.ca/site/canadian-intellectual-property-office/en/search-intellectual-property-databases | 2022-05-09 | 2026-08-08T17:40:50+03:00 | Resmî rehber | Kanada / EN | Trademarks bölümü ve scope/limitations | Canadian trademarks search'ün resmî başlangıç yüzeyi olduğu ve ön aramanın sınırlı olduğu | Veritabanı bağlantısı ve CIPO sınırlamaları | INFERENCE: Kanada ön taramasının ana otoritesi | Kayıt dışı/common-law veya Quebec civil-law haklarını dışlamaz; profesyonel doğrulama önerir | BİLİNEN YOK | YÜKSEK — resmî kurum | Her Kanada yöntem çalışması öncesi | CURRENT |
-| SRC-DEC-STUDIO-NAME-001-004 | CIPO / ISED Canada | Canadian Trademarks Database — Search | https://ised-isde.canada.ca/cipo/trademark-search/srch?lang=eng | Veritabanı güncellemesi dinamik | 2026-08-08T17:40:50+03:00 | Resmî veritabanı | Kanada / EN | Arama alanları ve filtreler gözden geçirildi; aday sorgusu yapılmadı | Marka türü, durum, Nice sınıfı ve tarih filtresiyle resmî ön tarama yapılabildiği | Arama alanları, durum ve sınıf filtreleri | INFERENCE: sorgular yeniden üretilebilir parametrelerle kaydedilmeli | Sonuç yokluğu hukuki temizlik garantisi değildir; veri değişebilir | BİLİNEN YOK | YÜKSEK — resmî veritabanı | Her sorguda güncelleme tarihi ve aynı iş günü | CURRENT |
-| SRC-DEC-STUDIO-NAME-001-005 | CIPO / ISED Canada | Goods and Services Manual | https://www.ised-isde.canada.ca/site/canadian-intellectual-property-office/en/trademarks/goods-and-services-manual | BULUNAMADI | 2026-08-08T17:40:50+03:00 | Resmî mal/hizmet rehberi | Kanada / EN | Arama seçenekleri ve Nice edition bilgisi | Kanada için kabul edilebilir mal/hizmet ifadeleri ve güncel Nice sürümü bağlamı sağladığı | CIPO mal/hizmet terimleri ve sürüm bilgisi | INFERENCE: WIPO eşleşmesi Kanada uygulamasıyla çaprazlanmalı | İçerik değişebilir; başvuru veya tescil kabulü hakkında genel garanti vermez | BİLİNEN YOK | YÜKSEK — resmî kurum | Nice edition veya CIPO içerik değişikliğinde | CURRENT |
+## Boş kayıt şablonu
 
-## Çıkarım ve değişiklik kayıtları
+| Source ID | Decision ID | Research Workstream | Agent ID | Source Name | Source Type | URL or Official Record Identifier | Publisher/Institution | Access Date | Access Time | Data Date | Country/Jurisdiction | Supported Claim | Primary/Secondary Classification | Confidence Level | Conflict of Interest Declaration | Volatility/Changeability Status | Recheck Date | Evidence Allocation | Notes | Limitations | Review Status | Reviewer Agent ID |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 
-Henüz araştırmacı çıkarımı, aday sorgusu veya örneklem kaydı yoktur. İleride her çıkarım kaynak satırından ayrı bir evidence-allocation kaydıyla bağlanır. Resmî durum değişirse eski kayıt `SUPERSEDED`, yeni kayıt yeni Source ID ile `CURRENT` olur.
+## SAMPLE/TEMPLATE kuralı
+
+Bir biçim örneği gerekirse satırın Source ID değeri `SAMPLE` veya `TEMPLATE` ile başlamalıdır. Böyle satır gerçek kaynak kaydı sayılamaz, validator ve araştırma toplamlarından dışlanır, Evidence Allocation'a bağlanamaz ve `REVIEWED` durumu alamaz. Bu belgede örnek satır yoktur.
+
+## Kayıt yaşam döngüsü
+
+- Yeni kayıt başlangıçta `UNREVIEWED` olur.
+- Reviewer tüm zorunlu alanları, doğrudan kaynağı ve iddia tahsisini kontrol ederse `REVIEWED` yapabilir.
+- Değişebilir veri eskimiş, erişilemez veya çelişkiliyse `NEEDS_RECHECK`; kanıt standardını karşılamıyorsa `REJECTED` olur.
+- Değişiklik önceki kaydı sessizce silmez. Yeni Source ID veya sürümlü append-only kayıt kullanılır; eski kayıt Notes ve Evidence Allocation ile bağlanır.
+- `HIGHLY_CHANGEABLE` kaynak proposal ve finalist aşamalarında yeniden kontrol edilir. Recheck başarısızsa ilgili iddia `INCOMPLETE` olur ve `PASS` üretmez.

@@ -25,15 +25,35 @@ Nice Classification, WIPO tarafından marka tescilinde kullanılan mal ve hizmet
 6. Nice sınıf listesi, ileride yapılacak benzerlik taramasının kapsam girdisidir; tek başına tescil edilebilirlik, ihlal yokluğu veya marka temizliği kanıtı değildir.
 7. Ücretli uzman incelemesi gerekiyorsa ayrı kurucu onayı alınır. İlk turda harcama yapılmaz.
 
+### Current verified classification reference
+
+| Alan | Doğrulanmış değer |
+|---|---|
+| Edition/Version | `NCL (13-2026)` — 13th Edition, Version 2026 |
+| Effective Date | `2026-01-01` |
+| Official Source | World Intellectual Property Organization (WIPO), Nice Classification Download and IT Support Area; resmî NCLPUB sınıf başlıkları |
+| Source Identifier or URL | `https://www.wipo.int/classifications/nice/en/ITsupport/`; `https://nclpub.wipo.int/esen/pdf-download.pdf?dateInForce=20260101&lang=en&tab=class_headings` |
+| Access Date | `2026-08-08` |
+| Access Time | `2026-08-08T17:58:44+03:00` |
+| Verifying Agent | `senior-research-method-remediation-architect` |
+| Notes and Limitations | WIPO sayfası `NCL (13-2026)` değerini current edition-version olarak gösterdi; resmî NCLPUB belgesi başlığı ve `dateInForce=20260101` parametresi sürüm ile yürürlük tarihini doğruladı. Bu kayıt mal/hizmet sınıfı ataması, hukuk görüşü veya tescil garantisi değildir. |
+
+Edition/version değişebilir. Proposal aşamasına geçmeden ve finalist paketi hazırlanırken resmî WIPO sayfası yeniden kontrol edilir; edition/version, yürürlük tarihi, erişim tarih-saat ve doğrulayan agent yeni kayıt olarak eklenir. Doğrulama başarısızsa `NOT VERIFIED — RESEARCH BLOCKED` yazılır; sınıf araştırması, puan veya Legal/IP `PASS` üretilemez.
+
 ## Kanada resmî kaynak yöntemi
 
 Kanada için birincil yüzey Canadian Intellectual Property Office (CIPO) tarafından işletilen **Canadian Trademarks Database**'dir. CIPO'nun **Goods and Services Manual** aracı, Kanada başvurularında mal/hizmet ifadeleri ve güncel Nice sınıflandırma bağlamı için ayrı yöntem kaynağıdır.
 
 - Kurulum aşamasında yalnız kaynak otoritesi, arama alanları, durum filtreleri, Nice sınıf filtresi ve güncelleme tarihi kaydedilir; marka sorgusu yapılmaz.
-- Aday üretimine yetki veren sonraki aşamada her sorgu; sorgu metni, eşleşme operatörü, dil, Nice sınıfı, durum kapsamı, tarih-saat ve sonuç sayfası kimliğiyle kaydedilir.
+- Aday üretimine ayrıca yetki verilen sonraki aşamada her sorgu aşağıdaki zorunlu sırayla ayrı `Search ID` alır: tam kelime eşleşmesi; kelime başlangıcı ve kökü; tekil ve çoğul biçimler; bitişik ve ayrı yazım; tireli ve tiresiz yazım; fonetik açıdan benzer yazımlar; yaygın harf değişimleri; ters kelime sırası; kısaltmalar; görsel olarak benzer karakterler; Fransızca ve İngilizce olası karşılıklar; Nice sınıfı ve mal/hizmet ifadesine göre daraltılmış sorgular.
+- Normalizasyon yalnız varyant üretmek içindir: özgün token korunur; büyük/küçük harf, aksan, boşluk ve noktalama dönüşümleri ayrı Exact Query satırları olarak kaydedilir. Fonetik, çeviri ve görsel benzerlik araştırmacı yorumuysa `INFERENCE` etiketi ve gerekçesi taşır; veri tabanı sonucu gibi sunulmaz.
+- Her sorgunun zorunlu alanları: `Search ID`, `Candidate/Query Token`, `Query Type`, `Exact Query`, `Database`, `Filters`, `Nice Class`, `Goods/Services Terms`, `Search Date and Time`, `Search Agent`, `Result Count`, `Relevant Result IDs`, `Confidence`, `Limitations`, `Recheck Required`.
+- CIPO Canadian Trademarks Database marka sonucu ve durum kaydı için; CIPO Goods and Services Manual ise Kanada'da kabul edilen mal/hizmet terimleri ve sınıflandırma bağlamı için kullanılır. Biri diğerinin yerine geçmez.
 - Yalnız aktif kayıtlar değil; CIPO'nun sunduğu iptal, terk, ret ve benzeri tarihsel durumlar da yöntem kapsamına alınır. Sonuç durumu aynen aktarılır, araştırmacı tarafından yeniden adlandırılmaz.
 - CIPO, marka veritabanı aramasının ilk arama olduğunu ve profesyonel doğrulamanın gerekebileceğini belirtir. Kayıt yokluğu; common-law/civil-law haklarının, şirket adlarının veya yayımlanmamış/değişmiş durumların yokluğu anlamına gelmez.
 - Kanada sonucu `ÖN TARAMA — HUKUK GÖRÜŞÜ DEĞİLDİR` etiketi taşır ve Legal/IP Risk Advisor tarafından bağımsız değerlendirilir.
+
+Varyant matrisi ancak bütün zorunlu sorgu türlerinin bir Search ID ile tamamlanması, ilgili Nice/mal-hizmet daraltmalarının çalıştırılması ve sınırlamaların kaydedilmesiyle tamamlanmış sayılır. Kaynak erişilemiyorsa, sonuç belirsizse veya tek bir zorunlu varyant bile tamamlanmamışsa `PASS` üretilemez; sorgu paketi `INCOMPLETE` veya `ESCALATED` olur ve Legal/IP hattına hazır sonuç olarak devredilemez. Bu çalışma profesyonel Kanada hukuk görüşü veya tescil garantisi değildir.
 
 ## Aktiflik ve dahil etme yöntemi
 
@@ -70,10 +90,18 @@ Her kaynak `docs/research/DEC-STUDIO-NAME-001-source-register.md` içinde şu al
 
 1. `market-research-director`: örneklem çerçevesi, aktiflik kanıtı, kaynak sicili ve Research Memo'nun pazar bölümünü üretir; marka seçmez ve kendi memo'sunu nihai onaylamaz.
 2. `brand-marketing-director`: kabul edilmiş pazar veri paketinden konumlandırma ölçütleri ve ayrı yorum matrisi üretir; örneklem kayıtlarını değiştirmez, Legal/IP sonucu vermez.
-3. `community-localization-director`: bağlayıcı dil kapsamı için ayrı telaffuz/anlam/kültür yöntemini uygular; pazar veya hukuk sonucunu devralmaz.
+3. `community-localization-director`: bu Decision ID için Brand Strategy'den bağımsız olarak dil anlamı, telaffuz, argo, kültürel çağrışım, yanlış okunma, transliterasyon ve bölgesel hassasiyet yöntemini uygular. Orchestrator'a yalnız lojistik durum bildirir; içerik sonucunu doğrudan bağımsız review/`FOUNDER` yönetişim hattına verir.
 4. `legal-ip-risk-advisor`: WIPO/CIPO ve diğer yetkili ofis kaynaklarını kullanarak ayrı Legal ve IP ön tarama yöntemini ve ileride ayrı gate tavsiyelerini üretir; pazar sahibinin bulgusunu değiştirmez.
 5. Handoff paketi her aşamada girdi sürümü, kaynak kimlikleri, varsayımlar, karşı kanıt, açık risk, güven, eksik veri ve alıcı rolü içerir. Alıcı kaynak verisini sessizce değiştiremez; düzeltme yeni kayıt ve gerekçeyle geri gönderilir.
 6. Studio Orchestrator yalnız teslim ve kayıt koordinasyonu yapar. Method readiness bağımsız reviewer tarafından denetlenmeden araştırma programı nihai onaylanmış sayılmaz.
+
+### DEC-STUDIO-NAME-001 localization bağımsızlık protokolü
+
+- Brand Strategy yalnız marka konumlandırması, algı, genişleme ile görsel ve stratejik uygunluğu değerlendirir.
+- Brand Strategy, Localization çıktısını değiştiremez, bastıramaz, yeniden derecelendiremez veya nihai onaylayamaz.
+- Localization ile Brand Strategy görüşü çatışırsa iki sürümlü görüş ve kanıtları ayrı kaydedilir. Studio Orchestrator bunları birleştiremez veya uzlaştıramaz.
+- Çelişki `quality-assurance-director` veya `independent-red-team-auditor` hattına escalation edilir; içerik sonucu bağımsız review ve gerektiğinde `FOUNDER` yönetişim hattına gider.
+- Bu protokol yalnız `DEC-STUDIO-NAME-001` araştırma hattına özgüdür; kalıcı organizasyon yapısını gereksiz yere değiştirmez.
 
 ## Resmî yöntem kaynakları
 

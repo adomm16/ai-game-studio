@@ -42,10 +42,10 @@ En az 200 kayıtlık araştırma için örneklem, aktiflik, kaynak, güncellik v
 
 | İş paketi | Sahip | Girdi | Çıktı | Bağımsızlık/handoff |
 |---|---|---|---|---|
-| Örneklem ve aktiflik | `market-research-director` | Sampling Framework; mandate | 200 benzersiz Sample ID, katman kotası, aktiflik kanıtı, dışlama sicili | Ham kanıt değişmez; Brand Strategy'ye sürümlü veri paketi |
+| Örneklem ve aktiflik | `market-research-director` | Sampling Framework; mandate | 200 benzersiz sayım birimi, katman kotası, durum kanıtı, bias ve dışlama sicili | Ham kanıt değişmez; Brand Strategy'ye sürümlü veri paketi |
 | Kaynak sicili ve güncellik | `market-research-director` | Research Method; kaynak şeması | Source ID'ler, sorgu günlükleri, stale/recheck listesi | Kendi memo'sunu nihai onaylamaz; QA'ya tam sicil |
 | Brand Strategy yorumu | `brand-marketing-director` | Kabul edilmiş pazar paketi | Ayrı konumlandırma/ölçüt matrisi ve karşı görüşler | Örneklem/aktiflik sonucunu değiştirmez; Legal sonucu vermez |
-| Localization yöntemi | `community-localization-director` | Dil kapsamı; sürümlü veri paketi | Dil başına kaynak, kapsam, telaffuz/anlam/argo yöntemi ve eksikler | Pazar ve Legal/IP sonuçlarından ayrı; doğrudan ilgili reviewer'a |
+| Localization yöntemi | `community-localization-director` | Dil kapsamı; sürümlü veri paketi | Dil anlamı, telaffuz, argo, kültürel çağrışım, yanlış okunma, transliterasyon, bölgesel hassasiyet ve eksikler | Brand Strategy'den bağımsız; Orchestrator'a yalnız lojistik durum, içerik sonucu bağımsız review/FOUNDER hattına |
 | Nice ve resmî ön tarama yöntemi | `legal-ip-risk-advisor` | Onaylı faaliyet envanteri; WIPO/CIPO kaynakları | Sürüm kayıtlı sınıf yöntemi, resmî kaynak matrisi, belirsizlikler | Hukuk görüşü vermez; ayrı Legal/IP hattı ve doğrudan FOUNDER raporu |
 | Method QA | `quality-assurance-director` veya bağımsız atanmış reviewer | Dört yöntem paketi ve siciller | PASS/REVISION REQUIRED yöntem bulgusu; eksik veri listesi | Hiçbir iş paketinin yazarı olamaz; araştırma onayı kurucu yetkisini ikame etmez |
 
@@ -53,7 +53,7 @@ En az 200 kayıtlık araştırma için örneklem, aktiflik, kaynak, güncellik v
 
 1. Kurulum belgeleri ve resmî yöntem kaynakları dondurulur; bağımsız method audit'e sunulur.
 2. Audit düzeltmeleri kapatılır; veri sözlüğü ve Source/Sample ID şemaları kilitlenir.
-3. 20 kayıtlık pilot (her birincil katmandan temsil) yalnız yöntem testi için toplanır; isim önerisi veya uygunluk taraması yapılmaz.
+3. 20 kayıtlık pilot (her birincil katmandan temsil) yalnız yöntem testi için, bu remediation bağımsız re-audit ile kabul edildikten sonra toplanır; isim önerisi veya uygunluk taraması yapılmaz.
 4. Pilot QA sonrasında kotalar korunarak 200 ana kayıt tamamlanır; eksik temsil ayrı raporlanır.
 5. Brand Strategy ve Localization paketleri aynı sürümlü pazar girdisinden bağımsız oluşturulur.
 6. Legal/IP Advisor Nice ve yargı kaynağı yöntemini onaylı faaliyet kapsamı üzerinde çalıştırır; aday marka taraması için ayrıca proposal-stage yetkisi bekler.
@@ -63,6 +63,10 @@ En az 200 kayıtlık araştırma için örneklem, aktiflik, kaynak, güncellik v
 
 - Bağımsız method audit tamamlanmadan araştırma programı nihai onaylı sayılmaz.
 - Veri sözlüğü, katman kotaları ve aktiflik ölçütleri kilitlenmeden ana örneklem toplama başlamaz.
+- Beş P1 bulgusu bağımsız re-audit ile kapatılmadan pilot veya ana örneklem toplama başlamaz.
+- Kota eksikliği komşu katmandan aktarılamaz; eksik sayı, kaynak açığı ve alternatif havuz kaydedilir. Market Research Director önerisi ve bağımsız QA/reviewer onayı olmadan kota değişmez.
+- Kanada varyant matrisi eksik, kaynak erişilemez veya sonuç belirsizse paket `INCOMPLETE`/`ESCALATED` olur; `PASS` üretmez.
+- WIPO Nice edition/version proposal ve finalist aşamalarında yeniden doğrulanamazsa `NOT VERIFIED — RESEARCH BLOCKED` olur.
 - Kaynağı, tarihi veya güveni olmayan iddia Research Memo'ya olgu olarak girmez.
 - Tek sosyal medya hesabına dayalı aktiflik kararı geçersizdir.
 - Resmî kaynak erişilemiyor, güncel değil veya çelişkiliyse kayıt `DOĞRULANMADI`; ilgili teslim hazır değildir.
@@ -75,17 +79,22 @@ En az 200 kayıtlık araştırma için örneklem, aktiflik, kaynak, güncellik v
 | Risk | Kontrol |
 |---|---|
 | Katman çift sayımı | Tek birincil katman; ikincil etiket; benzersiz Sample ID |
-| Seçim/başarı yanlılığı | Sorun örnekleri, karşı kanıt, dışlama sicili ve eksik temsil |
+| Seçim/başarı yanlılığı | Bölge/ölçek izleme, yedi riskli bias sicili, aday havuzu, karşı kanıt ve dışlama sicili |
+| Aktif/tarihsel karışma | Durum taksonomisi, ayrı Event ID, tek Counted Sample ID ve halef/selef bağlantısı |
 | Eski/değişmiş veri | Zaman damgası, 7 günlük Research Memo eşiği, aynı iş günü/24 saat yeniden kontrol |
 | Resmî kayıt ile inference karışması | Ayrı `Resmî veri` ve `INFERENCE` alanları |
 | Hukuki kesinlik | Legal/IP bağımsızlığı, sınırlama etiketi, profesyonel görüş gereksinimi |
 | Rol birleşmesi | Ayrı sahiplik, sürümlü handoff, sessiz veri değişikliği yasağı |
+| Localization etkilenmesi | Brand Strategy'den karar-özel bağımsız içerik hattı; dissent kaydı; QA/Red-Team escalation |
 
 ## Doğrulama
 
 - 200 birincil kayıt = 150 oyun stüdyosu/yayıncı + 50 yakın marka; sekiz katman hedefleri toplamı 200.
 - Her dahil kayıt iki aktiflik sinyali ve en az bir resmî/birincil kaynak taşır.
-- Her Source ID zorunlu alanlara, tarih ve güvene sahiptir.
+- Her Source ID, kaynak sicilindeki 23 zorunlu alanın tamamına sahiptir; SAMPLE/TEMPLATE satırları toplam dışıdır.
+- Bölge ve ölçek dağılımı, bias sicili ve kota escalation kararları kayıtlıdır.
+- Aktif kuruluş ile tarihsel olay aynı 200 toplamında iki kez sayılamaz.
+- Kanada sorgu varyantları ve Nice sürüm recheck kapıları tamamlanmadan ilgili paket PASS alamaz.
 - Method audit sonucu ve açık düzeltmeler görünürdür.
 - `python scripts/validate_studio.py`, `python -m unittest discover -s tests -v` ve `git diff --check` geçer.
 
@@ -102,6 +111,11 @@ En az 200 kayıtlık araştırma için örneklem, aktiflik, kaynak, güncellik v
 - Araştırma örnekleri, aday isimler, alan adı/kullanıcı adı sorguları ve marka uygunluğu sonuçları henüz üretilmedi.
 - Durum: `METHOD SETUP — INDEPENDENT AUDIT REQUIRED`.
 
+## Remediation sonrası yönetişim durumu
+
+Bu plan beş P1 ve bir P2 audit bulgusuna yanıt verecek biçimde güncellenmiştir; kendi çalışmasını `APPROVED` ilan etmez. Araştırma yürütmesi başlamadan `docs/audits/governance/DEC-STUDIO-NAME-001-research-method-remediation.md` bağımsız re-audit'e sunulmalıdır.
+
 ## Değişiklik günlüğü
 
 - 2026-08-08: İlk araştırma yürütme planı oluşturuldu; bağımsız method audit gereksinimi kaydedildi.
+- 2026-08-08: Kanada sorgu varyantları, örneklem dengeleme/kota escalation, durum taksonomisi, boş kaynak şablonu, Localization bağımsızlığı ve Nice sürüm recheck kapıları eklendi.
