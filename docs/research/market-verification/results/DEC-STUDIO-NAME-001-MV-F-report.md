@@ -9,7 +9,7 @@
 - `STATUS_UNCERTAIN`: 26
 - Sources reviewed: 60 existing, 0 new
 - Final source status: 47 `REVIEWED`, 10 `NEEDS_RECHECK`, 3 `REJECTED`
-- Network/access problems: 10
+- Network/access problems: 12
 
 ## Method
 
