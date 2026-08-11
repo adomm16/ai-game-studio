@@ -1,0 +1,13 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.8",
+  "Category": "Games",
+  "Description": "Ashfall Provinces single-player strategy vertical slice.",
+  "Modules": [
+    {
+      "Name": "AshfallProvinces",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ]
+}
