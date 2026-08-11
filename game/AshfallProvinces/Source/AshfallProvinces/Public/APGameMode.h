@@ -11,4 +11,5 @@ class ASHFALLPROVINCES_API AAPGameMode : public AGameModeBase
 
 public:
     AAPGameMode();
+    virtual void BeginPlay() override;
 };

@@ -10,18 +10,29 @@ AAPStrategyCameraPawn::AAPStrategyCameraPawn()
 
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(SceneRoot);
-    SpringArm->TargetArmLength = 2200.0f;
-    SpringArm->SetRelativeRotation(FRotator(-55.0f, 0.0f, 0.0f));
+    SpringArm->TargetArmLength = 4800.0f;
+    SpringArm->SetRelativeRotation(FRotator(-58.0f, -35.0f, 0.0f));
     SpringArm->bDoCollisionTest = false;
 
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm);
 }
 
+void AAPStrategyCameraPawn::BeginPlay()
+{
+    Super::BeginPlay();
+    SetActorLocation(FVector::ZeroVector);
+}
+
 void AAPStrategyCameraPawn::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
-    AddActorWorldOffset(FVector(PendingMove.Y, PendingMove.X, 0.0f) * 1200.0f * DeltaSeconds);
+    const FVector Movement(PendingMove.Y, PendingMove.X, 0.0f);
+    const FVector DesiredLocation = GetActorLocation() + Movement * 1500.0f * DeltaSeconds;
+    SetActorLocation(FVector(
+        FMath::Clamp(DesiredLocation.X, -3200.0f, 3200.0f),
+        FMath::Clamp(DesiredLocation.Y, -2600.0f, 2600.0f),
+        0.0f));
 }
 
 void AAPStrategyCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -36,5 +47,5 @@ void AAPStrategyCameraPawn::MoveForward(float Value) { PendingMove.Y = Value; }
 void AAPStrategyCameraPawn::MoveRight(float Value) { PendingMove.X = Value; }
 void AAPStrategyCameraPawn::Zoom(float Value)
 {
-    SpringArm->TargetArmLength = FMath::Clamp(SpringArm->TargetArmLength - Value * 150.0f, 700.0f, 3500.0f);
+    SpringArm->TargetArmLength = FMath::Clamp(SpringArm->TargetArmLength - Value * 350.0f, 1600.0f, 6200.0f);
 }

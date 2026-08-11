@@ -14,6 +14,7 @@ class ASHFALLPROVINCES_API AAPStrategyCameraPawn : public APawn
 
 public:
     AAPStrategyCameraPawn();
+    virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
