@@ -114,4 +114,12 @@ Belgeler istenen iki katmanlı modeli, koşullu 60 tabanını, stratification/b�
 
 ## Status
 
-**PROPOSED — REQUIRES INDEPENDENT GOVERNANCE AUDIT**
+## Remediation author self-check addendum
+
+Bu addendum independent audit değildir ve `FIXED`, `VERIFIED FIXED`, `PASS` veya `APPROVED` kararı vermez. GOV-ASA-001–009 için deterministic selection, target bands, stability codebook, lineage/freshness, Founder acceptance, all-eligible historical inclusion, cross-cell/scale controls, formal supersession map ve executable validator/test kanıtı hazırlanmıştır. Kontroller amendment remediation yazarı dışındaki reviewer tarafından adversarial re-audit edilmelidir.
+
+Founder acceptance kaydı yoktur. Beklenen doğru gate state `CLOSED_PENDING_INDEPENDENT_REAUDIT_AND_FOUNDER_ACCEPTANCE`dır. Method specification'ın validator tarafından valid bulunması recovery execution approval değildir.
+
+## Status
+
+**REMEDIATION SELF-CHECK — REQUIRES INDEPENDENT GOVERNANCE RE-AUDIT; RECOVERY GATE CLOSED**
