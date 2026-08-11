@@ -181,4 +181,20 @@ Eski dosyalar sessizce yeniden yazılmamıştır. Bu kayıt bağımsız audit il
 
 ## Status
 
-**PROPOSED — REQUIRES INDEPENDENT GOVERNANCE AUDIT**
+## Audit remediation controls
+
+Independent audit `REC-DEC-STUDIO-NAME-001-MARKET-METHOD-AMENDMENT-INDEPENDENT-AUDIT-001` bulgularına karşı aşağıdaki versioned kontroller bağlayıcı remediation girdisidir:
+
+- deterministic active selection, target-band formülleri, caps, cross-cell warning ve scale rule: `docs/governance/DEC-STUDIO-NAME-001-analytical-sample-selection-spec.md`;
+- preregistered metrics, `40/50/60/+10`, iki ardışık blok, `7.5pp`, `%5` missing ve `N=90` escalation: `docs/governance/DEC-STUDIO-NAME-001-pattern-stability-codebook.md`;
+- authoritative ownership, exact 1:1 join, precedence, hashes ve seven-day freshness: `docs/governance/DEC-STUDIO-NAME-001-analytical-lineage-freshness-spec.md`;
+- exact `SUPERSEDED`/`AMENDED`/`UNCHANGED` map: `docs/governance/DEC-STUDIO-NAME-001-market-method-supersession-map.md`;
+- explicit Founder acceptance prerequisite: `docs/governance/DEC-STUDIO-NAME-001-founder-acceptance-gate.md`.
+
+Fresh/evidence-eligible bütün `VERIFIED_ACTIVE` ve bütün `VERIFIED_HISTORICAL_CASE` kayıtlar otomatik dahil edilir; outcome nedeniyle çıkarılamaz. Historical `12` target değil minimum gate'tir. “Maddi sapma/değişim” reviewer takdiri değildir; selection target bands ve stability codebook ile ölçülür.
+
+Bu remediation kendi çalışmasını kabul etmez. Amendment ancak bağımsız re-audit ve exact `Founder Decision=ACCEPTED` recordundan sonra effective olabilir. Legal, Security, Privacy ve IP stop-gate'leri ile primary-source, two-independent-evidence, fail-closed, dedup, Founder final authority ve self-approval yasağı `UNCHANGED`dır.
+
+## Status
+
+**REMEDIATED PROPOSAL — REQUIRES INDEPENDENT GOVERNANCE RE-AUDIT AND FOUNDER ACCEPTANCE; RECOVERY GATE CLOSED**

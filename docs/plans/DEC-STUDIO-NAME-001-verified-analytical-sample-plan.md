@@ -115,4 +115,21 @@ Brand Strategy'ye yalnız: dondurulmuş manifest; yeniden hesaplanan gate tablos
 
 ## Status
 
-**PROPOSED — REQUIRES INDEPENDENT GOVERNANCE AUDIT**
+## Binding remediation execution rules
+
+1. Execution yalnız independent re-audit ve ayrı Founder acceptance recordunda exact `Founder Decision=ACCEPTED` sonrasında başlayabilir. Mevcut state `CLOSED_PENDING_INDEPENDENT_REAUDIT_AND_FOUNDER_ACCEPTANCE`dır.
+2. Dört authoritative input, source commit, raw SHA-256, schema version, row count ve freeze timestamp ile lineage manifestte dondurulur. `Counted Sample ID` join'i 1:1; Canonical Entity ID secondary integrity key'dir. Duplicate/missing/mismatch fail-closed olur. Consolidated result status için authoritative; register dimensions için authoritative'dir.
+3. Inclusion anında ve Brand Strategy handoff öncesinde verification/source-review yaşı `<=7 days` olmalıdır. Missing veya stale tarih `STALE_RECHECK_REQUIRED`dır ve inclusion yasaktır.
+4. Fresh/evidence-eligible bütün mevcut `VERIFIED_ACTIVE` kayıtlar otomatik dahildir. Recovery candidate ordering ve hard-cap skip yalnız `ASA-SELECTION-v1.0.0` ile yapılır; manual ranking yasaktır.
+5. Stratum bands her N için `Expected=N*count/180`, `Lower=max(6,floor(0.80*Expected))`, `Upper=min(floor(0.30*N),ceil(1.20*Expected))`dır. Belirsiz “maddi sapma” reviewer override'ı yoktur.
+6. Her snapshot Stratum x Region matrix üretir; `%15` üstü hücre `CROSS_CELL_CONCENTRATION_WARNING`, bias register, sensitivity, limitation ve independent review gerektirir. Region hard caps değişmez.
+7. Stability yalnız `ASA-STABILITY-v1.0.0` preregistered metricleriyle ölçülür. `40->50` ve `50->60` dahil son iki ardışık +10 blokta bütün metricler `<=7.5pp`; missing/ambiguous `<=5%` olmalıdır. Gerekirse 70/80/90 devam eder; 90'da PASS yoksa `GOVERNANCE_ESCALATION_REQUIRED` ve gate kapalıdır.
+8. Fresh/evidence-eligible bütün `VERIFIED_HISTORICAL_CASE` kayıtlar dahil edilir; subsampling yoktur. `n>=12` ve iki historical stratumda `n>=5` minimum gate'tir, target değildir.
+9. Scale yalnız reviewed evidence coverage `>=80%` ise karşılaştırılır; aksi durumda scale percentage/comparison yasak ve data-gap/bias raporu zorunludur. Scale selection hard criterion değildir.
+10. Context Inventory ve Analytical Sample ayrı version/payda olarak kalır. Legal/IP, Security, Privacy ve Founder decision hatları değişmez; bu plan hiçbirine PASS vermez.
+
+Normatif ayrıntılar selection, stability, lineage/freshness, supersession ve Founder acceptance governance specifications içindedir. Herhangi bir conflict halinde bu remediation specifications fail-closed uygulanır ve independent re-audit'e escalation edilir.
+
+## Status
+
+**REMEDIATED PROPOSAL — REQUIRES INDEPENDENT GOVERNANCE RE-AUDIT AND FOUNDER ACCEPTANCE; RECOVERY GATE CLOSED**
