@@ -136,8 +136,14 @@ void UAPSimulationSubsystem::StepSimulation()
 
 bool UAPSimulationSubsystem::MusterCompany(EAPSoldierType Type, const TArray<int32>& HouseholdIds)
 {
-    const int32 PlayerCompanyCount = Companies.CountByPredicate(
-        [](const FAPArmyState& Entry) { return Entry.OwnerId == 0 && !Entry.HouseholdIds.IsEmpty(); });
+    int32 PlayerCompanyCount = 0;
+    for (const FAPArmyState& Entry : Companies)
+    {
+        if (Entry.OwnerId == 0 && !Entry.HouseholdIds.IsEmpty())
+        {
+            ++PlayerCompanyCount;
+        }
+    }
     if (PlayerCompanyCount >= MaxCompanies)
     {
         return false;
