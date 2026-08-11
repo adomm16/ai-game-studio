@@ -5,6 +5,7 @@
 #include "Engine/StaticMeshActor.h"
 #include "Engine/TextRenderActor.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "APPlayerController.h"
 #include "Simulation/APSimulationSubsystem.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -43,17 +44,18 @@ void AAPGreyboxWorldBuilder::BeginPlay()
 {
     Super::BeginPlay();
     SpawnStaticWorld();
-    RefreshCompanyVisuals();
+    UpdateCompanyVisuals(0.0f);
 }
 
 void AAPGreyboxWorldBuilder::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+    UpdateCompanyVisuals(DeltaSeconds);
     CompanyRefreshAccumulator += DeltaSeconds;
     if (CompanyRefreshAccumulator >= 0.5f)
     {
         CompanyRefreshAccumulator = 0.0f;
-        RefreshCompanyVisuals();
+        UpdateProvinceVisuals();
     }
 }
 
@@ -135,10 +137,12 @@ void AAPGreyboxWorldBuilder::SpawnProvince(const FAPProvinceState& Province)
         : (Province.OwnerId == 1 ? FLinearColor(0.65f, 0.12f, 0.08f) : FLinearColor(0.30f, 0.28f, 0.24f));
     const FString OwnerLabel = Province.OwnerId == 0 ? TEXT("PLAYER") : (Province.OwnerId == 1 ? TEXT("AI") : TEXT("NEUTRAL"));
     const FVector Location = ProvinceLocation(Province.ProvinceId);
-    SpawnShape(CylinderMesh, Location, FVector(ProvinceRadiusScale, ProvinceRadiusScale, 0.18f),
-        Color, FString::Printf(TEXT("Province_%d"), Province.ProvinceId));
-    SpawnLabel(FString::Printf(TEXT("PROVINCE %d - %s"), Province.ProvinceId + 1, *OwnerLabel),
-        Location + FVector(0.0f, 0.0f, 130.0f), Province.OwnerId == 1 ? FColor::Red : FColor::White);
+    ProvinceShapes.Add(Province.ProvinceId, SpawnShape(CylinderMesh, Location,
+        FVector(ProvinceRadiusScale, ProvinceRadiusScale, 0.18f), Color,
+        FString::Printf(TEXT("Province_%d"), Province.ProvinceId)));
+    ProvinceLabels.Add(Province.ProvinceId, SpawnLabel(
+        FString::Printf(TEXT("PROVINCE %d - %s"), Province.ProvinceId + 1, *OwnerLabel),
+        Location + FVector(0.0f, 0.0f, 130.0f), Province.OwnerId == 1 ? FColor::Red : FColor::White));
 }
 
 void AAPGreyboxWorldBuilder::SpawnRoute(int32 FromProvinceId, int32 ToProvinceId)
@@ -176,42 +180,110 @@ void AAPGreyboxWorldBuilder::SpawnSettlement()
     }
 }
 
-void AAPGreyboxWorldBuilder::RefreshCompanyVisuals()
+void AAPGreyboxWorldBuilder::UpdateProvinceVisuals()
 {
-    for (AActor* Visual : CompanyVisuals)
+    const UAPSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UAPSimulationSubsystem>();
+    if (!Simulation)
     {
-        if (IsValid(Visual))
+        return;
+    }
+    for (const FAPProvinceState& Province : Simulation->GetProvinces())
+    {
+        const FLinearColor Color = Province.OwnerId == 0
+            ? FLinearColor(0.08f, 0.42f, 0.65f)
+            : (Province.OwnerId == 1 ? FLinearColor(0.65f, 0.12f, 0.08f) : FLinearColor(0.30f, 0.28f, 0.24f));
+        if (AStaticMeshActor* Shape = Cast<AStaticMeshActor>(ProvinceShapes.FindRef(Province.ProvinceId)))
         {
-            Visual->Destroy();
+            if (UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(
+                Shape->GetStaticMeshComponent()->GetMaterial(0)))
+            {
+                Material->SetVectorParameterValue(TEXT("Color"), Color);
+            }
+        }
+        if (ATextRenderActor* Label = Cast<ATextRenderActor>(ProvinceLabels.FindRef(Province.ProvinceId)))
+        {
+            const FString OwnerLabel = Province.OwnerId == 0 ? TEXT("PLAYER")
+                : (Province.OwnerId == 1 ? TEXT("AI") : TEXT("NEUTRAL"));
+            Label->GetTextRender()->SetText(FText::FromString(FString::Printf(
+                TEXT("PROVINCE %d - %s"), Province.ProvinceId + 1, *OwnerLabel)));
+            Label->GetTextRender()->SetTextRenderColor(
+                Province.OwnerId == 0 ? FColor::Cyan : (Province.OwnerId == 1 ? FColor::Red : FColor::White));
         }
     }
-    CompanyVisuals.Reset();
+}
 
+void AAPGreyboxWorldBuilder::UpdateCompanyVisuals(float DeltaSeconds)
+{
     const UAPSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UAPSimulationSubsystem>();
     if (!Simulation)
     {
         return;
     }
 
+    const AAPPlayerController* Controller = Cast<AAPPlayerController>(GetWorld()->GetFirstPlayerController());
+    const int32 SelectedCompanyId = Controller ? Controller->GetSelectedCompanyId() : INDEX_NONE;
+    TSet<int32> ActiveCompanyIds;
     for (const FAPArmyState& Company : Simulation->GetCompanies())
     {
         if (Company.HouseholdIds.IsEmpty())
         {
             continue;
         }
-        UStaticMesh* Mesh = Company.SoldierType == EAPSoldierType::Spear
-            ? ConeMesh.Get() : (Company.SoldierType == EAPSoldierType::Ranged ? CubeMesh.Get() : SphereMesh.Get());
+        ActiveCompanyIds.Add(Company.CompanyId);
         const FVector Offset(Company.OwnerId == 0 ? -180.0f : 180.0f, 120.0f, 150.0f);
+        FVector DesiredLocation = ProvinceLocation(Company.ProvinceId) + Offset;
+        if (Company.DestinationProvinceId != INDEX_NONE && Company.TravelTicksRemaining > 0)
+        {
+            const float TotalTicks = Company.SoldierType == EAPSoldierType::Scout ? 1.0f : 2.0f;
+            const float Progress = FMath::Clamp(1.0f - Company.TravelTicksRemaining / TotalTicks, 0.0f, 1.0f);
+            DesiredLocation = FMath::Lerp(ProvinceLocation(Company.ProvinceId),
+                ProvinceLocation(Company.DestinationProvinceId), Progress) + Offset;
+        }
         const FLinearColor Color = Company.OwnerId == 0
             ? FLinearColor(0.15f, 0.65f, 1.0f) : FLinearColor(0.95f, 0.15f, 0.08f);
-        AActor* Shape = SpawnShape(Mesh, ProvinceLocation(Company.ProvinceId) + Offset,
-            FVector(0.8f, 0.8f, 1.6f), Color, TEXT("CompanyVisual"));
-        AActor* Label = SpawnLabel(FString::Printf(TEXT("%s %s x%d"),
-            Company.OwnerId == 0 ? TEXT("PLAYER") : TEXT("AI"),
-            *SoldierTypeName(Company.SoldierType), Company.HouseholdIds.Num()),
-            ProvinceLocation(Company.ProvinceId) + Offset + FVector(0.0f, 0.0f, 170.0f),
-            Company.OwnerId == 0 ? FColor::Cyan : FColor::Red);
-        CompanyVisuals.Add(Shape);
-        CompanyVisuals.Add(Label);
+        AActor* Shape = CompanyShapes.FindRef(Company.CompanyId);
+        if (!IsValid(Shape))
+        {
+            UStaticMesh* Mesh = Company.SoldierType == EAPSoldierType::Spear
+                ? ConeMesh.Get() : (Company.SoldierType == EAPSoldierType::Ranged ? CubeMesh.Get() : SphereMesh.Get());
+            Shape = SpawnShape(Mesh, DesiredLocation, FVector(0.8f, 0.8f, 1.6f), Color,
+                FString::Printf(TEXT("Company_%d"), Company.CompanyId));
+            CompanyShapes.Add(Company.CompanyId, Shape);
+        }
+        AActor* Label = CompanyLabels.FindRef(Company.CompanyId);
+        if (!IsValid(Label))
+        {
+            Label = SpawnLabel(TEXT("COMPANY"), DesiredLocation + FVector(0.0f, 0.0f, 190.0f),
+                Company.OwnerId == 0 ? FColor::Cyan : FColor::Red);
+            CompanyLabels.Add(Company.CompanyId, Label);
+        }
+
+        const FVector VisualLocation = DeltaSeconds > 0.0f
+            ? FMath::VInterpConstantTo(Shape->GetActorLocation(), DesiredLocation, DeltaSeconds, 650.0f)
+            : DesiredLocation;
+        Shape->SetActorLocation(VisualLocation);
+        Shape->SetActorScale3D(Company.CompanyId == SelectedCompanyId
+            ? FVector(1.15f, 1.15f, 2.1f) : FVector(0.8f, 0.8f, 1.6f));
+        Label->SetActorLocation(VisualLocation + FVector(0.0f, 0.0f, 190.0f));
+        if (ATextRenderActor* TextLabel = Cast<ATextRenderActor>(Label))
+        {
+            TextLabel->GetTextRender()->SetText(FText::FromString(FString::Printf(TEXT("%s%s %s x%d"),
+                Company.CompanyId == SelectedCompanyId ? TEXT("> ") : TEXT(""),
+                Company.OwnerId == 0 ? TEXT("PLAYER") : TEXT("AI"),
+                *SoldierTypeName(Company.SoldierType), Company.HouseholdIds.Num())));
+        }
+    }
+
+    TArray<int32> KnownCompanyIds;
+    CompanyShapes.GetKeys(KnownCompanyIds);
+    for (int32 CompanyId : KnownCompanyIds)
+    {
+        if (!ActiveCompanyIds.Contains(CompanyId))
+        {
+            if (AActor* Shape = CompanyShapes.FindRef(CompanyId)) { Shape->Destroy(); }
+            if (AActor* Label = CompanyLabels.FindRef(CompanyId)) { Label->Destroy(); }
+            CompanyShapes.Remove(CompanyId);
+            CompanyLabels.Remove(CompanyId);
+        }
     }
 }

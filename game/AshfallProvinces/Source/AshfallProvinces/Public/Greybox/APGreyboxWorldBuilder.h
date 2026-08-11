@@ -27,14 +27,18 @@ private:
     void SpawnProvince(const FAPProvinceState& Province);
     void SpawnRoute(int32 FromProvinceId, int32 ToProvinceId);
     void SpawnSettlement();
-    void RefreshCompanyVisuals();
+    void UpdateCompanyVisuals(float DeltaSeconds);
+    void UpdateProvinceVisuals();
 
     UPROPERTY() TObjectPtr<UStaticMesh> CylinderMesh;
     UPROPERTY() TObjectPtr<UStaticMesh> CubeMesh;
     UPROPERTY() TObjectPtr<UStaticMesh> ConeMesh;
     UPROPERTY() TObjectPtr<UStaticMesh> SphereMesh;
     UPROPERTY() TObjectPtr<UMaterialInterface> BaseMaterial;
-    UPROPERTY() TArray<TObjectPtr<AActor>> CompanyVisuals;
+    UPROPERTY() TMap<int32, TObjectPtr<AActor>> CompanyShapes;
+    UPROPERTY() TMap<int32, TObjectPtr<AActor>> CompanyLabels;
+    UPROPERTY() TMap<int32, TObjectPtr<AActor>> ProvinceShapes;
+    UPROPERTY() TMap<int32, TObjectPtr<AActor>> ProvinceLabels;
 
     float CompanyRefreshAccumulator = 0.0f;
 };
