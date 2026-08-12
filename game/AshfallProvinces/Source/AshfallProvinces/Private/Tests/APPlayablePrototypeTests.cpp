@@ -7,6 +7,7 @@
 #include "APStrategyCameraPawn.h"
 #include "Greybox/APGreyboxWorldBuilder.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "Simulation/APSimulationSubsystem.h"
 #include "UI/APStrategyHUD.h"
@@ -318,7 +319,33 @@ bool FAPVerifyPIEPrototypeUICommand::Update()
             CountPlayerCompanies(Simulation), CompaniesBefore + 1);
     }
 
-    const FString ScreenshotPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots/WindowsEditor/AshfallPrototype_PIE_UI.png"));
+    AAPGreyboxWorldBuilder* VisualBuilder = nullptr;
+    for (TActorIterator<AAPGreyboxWorldBuilder> It(PIEWorld); It; ++It) { VisualBuilder = *It; break; }
+    Test->TestNotNull(TEXT("Visual world builder is active"), VisualBuilder);
+    if (VisualBuilder && Simulation)
+    {
+        VisualBuilder->Tick(0.0f);
+        Test->TestEqual(TEXT("Six province visuals exist"), VisualBuilder->GetProvinceVisualCount(), 6);
+        Test->TestTrue(TEXT("Route visuals exist"), VisualBuilder->GetRouteVisualCount() >= 10);
+        Test->TestTrue(TEXT("Player settlement visual exists"), VisualBuilder->HasPlayerSettlementVisual());
+        Test->TestTrue(TEXT("Eight player building visuals exist"), VisualBuilder->GetPlayerBuildingVisualCount() >= 8);
+        Test->TestTrue(TEXT("AI outpost visual exists"), VisualBuilder->HasAIOutpostVisual());
+        Test->TestTrue(TEXT("Company visual spawns after muster"), VisualBuilder->GetCompanyVisualCount() >= 1);
+        Test->TestTrue(TEXT("Mustered company selection ring is active"),
+            VisualBuilder->IsCompanyVisualSelected(Controller->GetSelectedCompanyId()));
+        const int32 CompanyId = Controller->GetSelectedCompanyId();
+        const FVector BeforeMove = VisualBuilder->GetCompanyVisualLocation(CompanyId);
+        Test->TestTrue(TEXT("Visual movement order accepted"), Simulation->OrderMove(CompanyId, 1));
+        Simulation->Tick(UAPSimulationSubsystem::FixedTickSeconds);
+        Simulation->Tick(UAPSimulationSubsystem::FixedTickSeconds);
+        VisualBuilder->Tick(1.0f);
+        const FVector AfterMove = VisualBuilder->GetCompanyVisualLocation(CompanyId);
+        Test->TestTrue(TEXT("Company visual reaches movement destination"),
+            FVector::Dist2D(BeforeMove, AfterMove) > 500.0f);
+    }
+
+    const FString ScreenshotPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots/WindowsEditor/AshfallVisualPrototype_v0_2.png"));
+    GEngine->Exec(PIEWorld, TEXT("DisableAllScreenMessages"));
     FScreenshotRequest::RequestScreenshot(ScreenshotPath, true, false);
     UE_LOG(LogTemp, Display, TEXT("ASHFALL_PIE_SCREENSHOT_REQUESTED=%s"), *ScreenshotPath);
     return true;

@@ -17,6 +17,14 @@ public:
     AAPGreyboxWorldBuilder();
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
+    int32 GetProvinceVisualCount() const { return ProvinceShapes.Num(); }
+    int32 GetRouteVisualCount() const { return RouteVisualCount; }
+    int32 GetPlayerBuildingVisualCount() const { return PlayerBuildingVisualCount; }
+    bool HasPlayerSettlementVisual() const { return bHasPlayerSettlementVisual; }
+    bool HasAIOutpostVisual() const { return bHasAIOutpostVisual; }
+    int32 GetCompanyVisualCount() const { return CompanyShapes.Num(); }
+    bool IsCompanyVisualSelected(int32 CompanyId) const;
+    FVector GetCompanyVisualLocation(int32 CompanyId) const;
 
 private:
     static FVector ProvinceLocation(int32 ProvinceId);
@@ -24,9 +32,15 @@ private:
         const FLinearColor& Color, const FString& Name, float Yaw = 0.0f);
     AActor* SpawnLabel(const FString& Text, const FVector& Location, const FColor& Color);
     void SpawnStaticWorld();
+    void SpawnTerrain();
+    void SpawnAtmosphere();
     void SpawnProvince(const FAPProvinceState& Province);
     void SpawnRoute(int32 FromProvinceId, int32 ToProvinceId);
     void SpawnSettlement();
+    void SpawnAIAndNeutralLandmarks();
+    void SpawnBuilding(const FVector& Location, float Yaw, const FString& Name, const FLinearColor& WallColor,
+        float Scale = 1.0f);
+    void SpawnUnitFormation(int32 CompanyId, EAPSoldierType Type, const FVector& Location, const FLinearColor& Color);
     void UpdateCompanyVisuals(float DeltaSeconds);
     void UpdateProvinceVisuals();
 
@@ -39,6 +53,13 @@ private:
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> CompanyLabels;
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> ProvinceShapes;
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> ProvinceLabels;
+    UPROPERTY() TMap<int32, TObjectPtr<AActor>> CompanySelectionRings;
+    UPROPERTY() TMap<int32, TObjectPtr<AActor>> DestinationMarkers;
+    TMap<int32, TArray<TObjectPtr<AActor>>> CompanyFormationParts;
 
     float CompanyRefreshAccumulator = 0.0f;
+    int32 RouteVisualCount = 0;
+    int32 PlayerBuildingVisualCount = 0;
+    bool bHasPlayerSettlementVisual = false;
+    bool bHasAIOutpostVisual = false;
 };

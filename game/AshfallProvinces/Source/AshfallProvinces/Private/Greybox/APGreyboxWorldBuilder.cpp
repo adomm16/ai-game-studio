@@ -2,6 +2,12 @@
 
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
+#include "Components/SkyLightComponent.h"
+#include "Engine/DirectionalLight.h"
+#include "Engine/ExponentialHeightFog.h"
+#include "Engine/SkyLight.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/TextRenderActor.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -11,7 +17,7 @@
 
 namespace
 {
-constexpr float ProvinceRadiusScale = 6.2f;
+constexpr float ProvinceRadiusScale = 5.2f;
 
 FString SoldierTypeName(EAPSoldierType Type)
 {
@@ -117,6 +123,8 @@ void AAPGreyboxWorldBuilder::SpawnStaticWorld()
         return;
     }
 
+    SpawnTerrain();
+    SpawnAtmosphere();
     const TArray<FAPProvinceState> Provinces = Simulation->GetProvinces();
     for (const FAPProvinceState& Province : Provinces)
     {
@@ -130,23 +138,71 @@ void AAPGreyboxWorldBuilder::SpawnStaticWorld()
         }
     }
     SpawnSettlement();
+    SpawnAIAndNeutralLandmarks();
+}
+
+void AAPGreyboxWorldBuilder::SpawnTerrain()
+{
+    // Broad overlapping low-poly shelves hide the editor checkerboard and create a warm ashland basin.
+    SpawnShape(CubeMesh, FVector(0, 0, 12), FVector(48, 35, 0.22f),
+        FLinearColor(0.12f, 0.105f, 0.08f), TEXT("AshfallTerrainBase"));
+    static const FVector TileLocations[] = {
+        FVector(-2200,-1200,25), FVector(-650,-1300,20), FVector(1050,-1150,28), FVector(2250,-700,38),
+        FVector(-2100,750,35), FVector(-500,700,24), FVector(1050,850,32), FVector(2350,1100,44),
+        FVector(-600,1900,48), FVector(1050,1950,55)
+    };
+    static const FLinearColor TileColors[] = {
+        FLinearColor(.21f,.23f,.14f), FLinearColor(.28f,.23f,.14f), FLinearColor(.19f,.22f,.13f),
+        FLinearColor(.27f,.17f,.12f), FLinearColor(.18f,.20f,.12f), FLinearColor(.25f,.22f,.15f),
+        FLinearColor(.16f,.19f,.12f), FLinearColor(.30f,.19f,.13f), FLinearColor(.20f,.18f,.13f),
+        FLinearColor(.24f,.20f,.14f)
+    };
+    for (int32 Index = 0; Index < UE_ARRAY_COUNT(TileLocations); ++Index)
+    {
+        SpawnShape(SphereMesh, TileLocations[Index], FVector(14.0f, 11.0f, 0.30f + (Index % 3) * .08f),
+            TileColors[Index], FString::Printf(TEXT("TerrainRegion_%02d"), Index), Index * 17.0f);
+    }
+    // Deterministic rock/brush silhouettes give scale without an actor-heavy foliage system.
+    for (int32 Index = 0; Index < 24; ++Index)
+    {
+        const float X = -2850.0f + (Index % 8) * 820.0f;
+        const float Y = -2050.0f + (Index / 8) * 1900.0f + (Index % 2) * 240.0f;
+        SpawnShape(ConeMesh, FVector(X, Y, 45.0f), FVector(.32f,.32f,.75f + (Index % 3) * .2f),
+            FLinearColor(.12f,.15f,.09f), TEXT("AshPine"), Index * 29.0f);
+    }
+}
+
+void AAPGreyboxWorldBuilder::SpawnAtmosphere()
+{
+    ADirectionalLight* Sun = GetWorld()->SpawnActor<ADirectionalLight>(FVector::ZeroVector, FRotator(-48,-32,0));
+    Sun->GetLightComponent()->SetIntensity(5.2f);
+    Sun->GetLightComponent()->SetLightColor(FLinearColor(1.0f,.72f,.48f));
+    ASkyLight* Sky = GetWorld()->SpawnActor<ASkyLight>();
+    Sky->GetLightComponent()->SetIntensity(0.8f);
+    AExponentialHeightFog* Fog = GetWorld()->SpawnActor<AExponentialHeightFog>();
+    Fog->GetComponent()->SetFogDensity(0.00065f);
+    Fog->GetComponent()->SetFogInscatteringColor(FLinearColor(.42f,.31f,.22f));
 }
 
 void AAPGreyboxWorldBuilder::SpawnProvince(const FAPProvinceState& Province)
 {
     const FLinearColor Color = Province.OwnerId == 0
-        ? FLinearColor(0.08f, 0.42f, 0.65f)
-        : (Province.OwnerId == 1 ? FLinearColor(0.65f, 0.12f, 0.08f) : FLinearColor(0.30f, 0.28f, 0.24f));
+        ? FLinearColor(0.10f, 0.34f, 0.48f)
+        : (Province.OwnerId == 1 ? FLinearColor(0.48f, 0.13f, 0.09f) : FLinearColor(0.34f, 0.29f, 0.20f));
     const FString OwnerLabel = Province.OwnerId == 0 ? TEXT("PLAYER") : (Province.OwnerId == 1 ? TEXT("AI") : TEXT("NEUTRAL"));
     const FVector Location = ProvinceLocation(Province.ProvinceId);
-    AActor* ProvinceShape = SpawnShape(CylinderMesh, Location,
-        FVector(ProvinceRadiusScale, ProvinceRadiusScale, 0.18f), Color,
+    AActor* ProvinceShape = SpawnShape(CylinderMesh, Location + FVector(0,0,30),
+        FVector(ProvinceRadiusScale, ProvinceRadiusScale * .82f, 0.10f), Color,
         FString::Printf(TEXT("Province_%d"), Province.ProvinceId));
     if (ProvinceShape) ProvinceShape->Tags.Add(FName(*FString::Printf(TEXT("ProvinceId:%d"), Province.ProvinceId)));
     ProvinceShapes.Add(Province.ProvinceId, ProvinceShape);
     ProvinceLabels.Add(Province.ProvinceId, SpawnLabel(
         FString::Printf(TEXT("PROVINCE %d - %s"), Province.ProvinceId + 1, *OwnerLabel),
-        Location + FVector(0.0f, 0.0f, 130.0f), Province.OwnerId == 1 ? FColor::Red : FColor::White));
+        Location + FVector(0.0f, 0.0f, 175.0f), Province.OwnerId == 1 ? FColor(255,110,90) : FColor::White));
+    // Ownership banner: restrained color accent rather than flooding the terrain.
+    SpawnShape(CubeMesh, Location + FVector(-260,0,120), FVector(.08f,.08f,1.5f),
+        FLinearColor(.10f,.08f,.05f), TEXT("BannerPole"));
+    SpawnShape(CubeMesh, Location + FVector(-225,0,210), FVector(.55f,.06f,.38f), Color, TEXT("OwnershipBanner"));
 }
 
 void AAPGreyboxWorldBuilder::SpawnRoute(int32 FromProvinceId, int32 ToProvinceId)
@@ -154,33 +210,79 @@ void AAPGreyboxWorldBuilder::SpawnRoute(int32 FromProvinceId, int32 ToProvinceId
     const FVector Start = ProvinceLocation(FromProvinceId);
     const FVector End = ProvinceLocation(ToProvinceId);
     const FVector Delta = End - Start;
-    const FVector Midpoint = (Start + End) * 0.5f + FVector(0.0f, 0.0f, 5.0f);
+    const FVector Midpoint = (Start + End) * 0.5f + FVector(0.0f, 0.0f, 58.0f);
     const float LengthScale = Delta.Size2D() / 100.0f;
     const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Delta.Y, Delta.X));
-    SpawnShape(CubeMesh, Midpoint, FVector(LengthScale, 0.12f, 0.05f),
-        FLinearColor(0.55f, 0.42f, 0.20f), TEXT("ProvinceRoute"), Yaw);
+    SpawnShape(CubeMesh, Midpoint, FVector(LengthScale, 0.34f, 0.045f),
+        FLinearColor(0.30f, 0.20f, 0.11f), TEXT("ProvinceRoute"), Yaw);
+    SpawnShape(CubeMesh, Midpoint + FVector(0,0,7), FVector(LengthScale, 0.20f, 0.028f),
+        FLinearColor(0.46f, 0.34f, 0.20f), TEXT("ProvinceRoadSurface"), Yaw);
+    RouteVisualCount += 2;
 }
 
 void AAPGreyboxWorldBuilder::SpawnSettlement()
 {
-    const FVector TownCenter = ProvinceLocation(0) + FVector(0.0f, 0.0f, 100.0f);
-    SpawnShape(CylinderMesh, TownCenter, FVector(1.8f, 1.8f, 0.8f),
-        FLinearColor(0.85f, 0.68f, 0.22f), TEXT("PlayerTownCenter"));
-    SpawnLabel(TEXT("ASHFALL SETTLEMENT"), TownCenter + FVector(0.0f, 0.0f, 190.0f), FColor::Yellow);
+    const FVector TownCenter = ProvinceLocation(0) + FVector(0.0f, 0.0f, 75.0f);
+    SpawnShape(CylinderMesh, TownCenter, FVector(2.6f, 2.2f, 0.10f),
+        FLinearColor(0.24f, 0.19f, 0.12f), TEXT("PlayerTownSquare"));
+    SpawnBuilding(TownCenter + FVector(0,0,55), 45.0f, TEXT("PlayerKeep"),
+        FLinearColor(.38f,.34f,.27f), 1.55f);
+    SpawnLabel(TEXT("ASHFALL HOLD"), TownCenter + FVector(0.0f, 0.0f, 310.0f), FColor(255,210,100));
+    bHasPlayerSettlementVisual = true;
 
     for (int32 BuildingIndex = 0; BuildingIndex < 8; ++BuildingIndex)
     {
         const float Angle = 2.0f * PI * static_cast<float>(BuildingIndex) / 8.0f;
-        const FVector Offset(FMath::Cos(Angle) * 320.0f, FMath::Sin(Angle) * 320.0f, 90.0f);
-        SpawnShape(CubeMesh, TownCenter + Offset, FVector(0.7f, 0.7f, 1.2f),
-            FLinearColor(0.48f, 0.35f, 0.18f), FString::Printf(TEXT("BuildingSlot_%d"), BuildingIndex + 1));
+        const FVector Offset(FMath::Cos(Angle) * 345.0f, FMath::Sin(Angle) * 290.0f, 45.0f);
+        SpawnBuilding(TownCenter + Offset, FMath::RadiansToDegrees(Angle) + 90.0f,
+            FString::Printf(TEXT("BuildingSlot_%d"), BuildingIndex + 1),
+            BuildingIndex % 2 ? FLinearColor(.42f,.29f,.17f) : FLinearColor(.34f,.31f,.23f),
+            .72f + (BuildingIndex % 3) * .10f);
+        ++PlayerBuildingVisualCount;
     }
-
-    for (int32 WorkerMarker = 0; WorkerMarker < 6; ++WorkerMarker)
+    // Four short lanes organize the settlement around a central square.
+    for (int32 Road = 0; Road < 4; ++Road)
     {
-        const FVector Offset(-260.0f + WorkerMarker * 105.0f, -190.0f, 45.0f);
-        SpawnShape(CubeMesh, TownCenter + Offset, FVector(0.22f, 0.22f, 0.45f),
-            FLinearColor(0.25f, 0.75f, 0.30f), TEXT("WorkingHouseholdMarker"));
+        SpawnShape(CubeMesh, TownCenter + FVector((Road < 2 ? 1 : 0) * (Road % 2 ? 180 : -180),
+            (Road >= 2 ? 1 : 0) * (Road % 2 ? 160 : -160), 15),
+            Road < 2 ? FVector(1.7f,.16f,.025f) : FVector(.16f,1.5f,.025f),
+            FLinearColor(.39f,.28f,.16f), TEXT("TownLane"));
+    }
+}
+
+void AAPGreyboxWorldBuilder::SpawnBuilding(const FVector& Location, float Yaw, const FString& Name,
+    const FLinearColor& WallColor, float Scale)
+{
+    SpawnShape(CubeMesh, Location, FVector(.62f,.52f,.62f) * Scale, WallColor, Name + TEXT("_Walls"), Yaw);
+    SpawnShape(ConeMesh, Location + FVector(0,0,86.0f * Scale), FVector(.88f,.78f,.42f) * Scale,
+        FLinearColor(.22f,.09f,.055f), Name + TEXT("_Roof"), Yaw + 45.0f);
+    SpawnShape(CubeMesh, Location + FVector(42.0f * Scale,0,-12.0f * Scale), FVector(.05f,.18f,.28f) * Scale,
+        FLinearColor(.12f,.07f,.035f), Name + TEXT("_Door"), Yaw);
+}
+
+void AAPGreyboxWorldBuilder::SpawnAIAndNeutralLandmarks()
+{
+    const FVector AI = ProvinceLocation(5) + FVector(0,0,95);
+    SpawnShape(CubeMesh, AI, FVector(1.25f,1.05f,.72f), FLinearColor(.31f,.27f,.23f), TEXT("AIOutpostKeep"));
+    for (int32 Corner = 0; Corner < 4; ++Corner)
+    {
+        SpawnShape(CylinderMesh, AI + FVector(Corner < 2 ? -135 : 135, Corner % 2 ? -115 : 115, 35),
+            FVector(.35f,.35f,1.15f), FLinearColor(.38f,.30f,.24f), TEXT("AIOutpostTower"));
+    }
+    SpawnLabel(TEXT("CINDER WATCH\nAI OUTPOST"), AI + FVector(0,0,220), FColor(255,90,70));
+    bHasAIOutpostVisual = true;
+    for (int32 ProvinceId = 1; ProvinceId < 5; ++ProvinceId)
+    {
+        const FVector P = ProvinceLocation(ProvinceId) + FVector(120,-90,95);
+        if (ProvinceId % 2 == 0)
+        {
+            SpawnShape(CylinderMesh, P, FVector(.42f,.42f,.9f), FLinearColor(.30f,.27f,.21f), TEXT("NeutralWatchtower"));
+            SpawnShape(ConeMesh, P + FVector(0,0,100), FVector(.58f,.58f,.35f), FLinearColor(.19f,.12f,.07f), TEXT("NeutralRoof"));
+        }
+        else
+        {
+            SpawnBuilding(P, ProvinceId * 31.0f, TEXT("NeutralHamlet"), FLinearColor(.37f,.30f,.21f), .55f);
+        }
     }
 }
 
@@ -205,8 +307,8 @@ void AAPGreyboxWorldBuilder::UpdateProvinceVisuals()
             }
             const AAPPlayerController* Controller = Cast<AAPPlayerController>(GetWorld()->GetFirstPlayerController());
             Shape->SetActorScale3D(Controller && Controller->GetSelectedProvinceId() == Province.ProvinceId
-                ? FVector(ProvinceRadiusScale * 1.08f, ProvinceRadiusScale * 1.08f, 0.28f)
-                : FVector(ProvinceRadiusScale, ProvinceRadiusScale, 0.18f));
+                ? FVector(ProvinceRadiusScale * 1.10f, ProvinceRadiusScale * .90f, 0.16f)
+                : FVector(ProvinceRadiusScale, ProvinceRadiusScale * .82f, 0.10f));
         }
         if (ATextRenderActor* Label = Cast<ATextRenderActor>(ProvinceLabels.FindRef(Province.ProvinceId)))
         {
@@ -218,6 +320,47 @@ void AAPGreyboxWorldBuilder::UpdateProvinceVisuals()
                 Province.OwnerId == 0 ? FColor::Cyan : (Province.OwnerId == 1 ? FColor::Red : FColor::White));
         }
     }
+}
+
+void AAPGreyboxWorldBuilder::SpawnUnitFormation(int32 CompanyId, EAPSoldierType Type,
+    const FVector& Location, const FLinearColor& Color)
+{
+    TArray<TObjectPtr<AActor>>& Parts = CompanyFormationParts.FindOrAdd(CompanyId);
+    const int32 FigureCount = Type == EAPSoldierType::Scout ? 3 : 5;
+    for (int32 Index = 0; Index < FigureCount; ++Index)
+    {
+        const FVector Local((Index % 3 - 1) * 70.0f, (Index / 3) * 80.0f - 35.0f, 25.0f);
+        AActor* Soldier = SpawnShape(CylinderMesh, Location + Local, FVector(.16f,.16f,.48f), Color,
+            FString::Printf(TEXT("Company_%d_Soldier"), CompanyId));
+        if (Soldier) Soldier->Tags.Add(FName(*FString::Printf(TEXT("CompanyId:%d"), CompanyId)));
+        Parts.Add(Soldier);
+        if (Type == EAPSoldierType::Spear)
+        {
+            Parts.Add(SpawnShape(CubeMesh, Location + Local + FVector(22,0,45), FVector(.025f,.025f,.78f),
+                FLinearColor(.40f,.29f,.16f), TEXT("SpearPole"), -8.0f));
+        }
+        else if (Type == EAPSoldierType::Ranged)
+        {
+            Parts.Add(SpawnShape(ConeMesh, Location + Local + FVector(18,0,35), FVector(.11f,.05f,.38f),
+                FLinearColor(.55f,.34f,.14f), TEXT("BowMarker"), 90.0f));
+        }
+    }
+    AActor* Ring = SpawnShape(CylinderMesh, Location + FVector(0,0,-2), FVector(1.2f,1.2f,.025f),
+        FLinearColor(.12f,.72f,1.0f), TEXT("CompanySelectionRing"));
+    Ring->SetActorHiddenInGame(true);
+    CompanySelectionRings.Add(CompanyId, Ring);
+}
+
+bool AAPGreyboxWorldBuilder::IsCompanyVisualSelected(int32 CompanyId) const
+{
+    const AActor* Ring = CompanySelectionRings.FindRef(CompanyId);
+    return Ring && !Ring->IsHidden();
+}
+
+FVector AAPGreyboxWorldBuilder::GetCompanyVisualLocation(int32 CompanyId) const
+{
+    const AActor* Shape = CompanyShapes.FindRef(CompanyId);
+    return Shape ? Shape->GetActorLocation() : FVector::ZeroVector;
 }
 
 void AAPGreyboxWorldBuilder::UpdateCompanyVisuals(float DeltaSeconds)
@@ -252,12 +395,12 @@ void AAPGreyboxWorldBuilder::UpdateCompanyVisuals(float DeltaSeconds)
         AActor* Shape = CompanyShapes.FindRef(Company.CompanyId);
         if (!IsValid(Shape))
         {
-            UStaticMesh* Mesh = Company.SoldierType == EAPSoldierType::Spear
-                ? ConeMesh.Get() : (Company.SoldierType == EAPSoldierType::Ranged ? CubeMesh.Get() : SphereMesh.Get());
-            Shape = SpawnShape(Mesh, DesiredLocation, FVector(0.8f, 0.8f, 1.6f), Color,
+            Shape = SpawnShape(CylinderMesh, DesiredLocation, FVector(.82f,.82f,.06f),
+                FLinearColor(Color.R * .4f, Color.G * .4f, Color.B * .4f),
                 FString::Printf(TEXT("Company_%d"), Company.CompanyId));
             if (Shape) Shape->Tags.Add(FName(*FString::Printf(TEXT("CompanyId:%d"), Company.CompanyId)));
             CompanyShapes.Add(Company.CompanyId, Shape);
+            SpawnUnitFormation(Company.CompanyId, Company.SoldierType, DesiredLocation, Color);
         }
         AActor* Label = CompanyLabels.FindRef(Company.CompanyId);
         if (!IsValid(Label))
@@ -272,8 +415,38 @@ void AAPGreyboxWorldBuilder::UpdateCompanyVisuals(float DeltaSeconds)
             : DesiredLocation;
         Shape->SetActorLocation(VisualLocation);
         Shape->SetActorScale3D(Company.CompanyId == SelectedCompanyId
-            ? FVector(1.15f, 1.15f, 2.1f) : FVector(0.8f, 0.8f, 1.6f));
+            ? FVector(1.05f, 1.05f, .07f) : FVector(.82f,.82f,.06f));
         Label->SetActorLocation(VisualLocation + FVector(0.0f, 0.0f, 190.0f));
+        if (AActor* Ring = CompanySelectionRings.FindRef(Company.CompanyId))
+        {
+            Ring->SetActorLocation(VisualLocation + FVector(0,0,-2));
+            Ring->SetActorHiddenInGame(Company.CompanyId != SelectedCompanyId);
+        }
+        if (TArray<TObjectPtr<AActor>>* Parts = CompanyFormationParts.Find(Company.CompanyId))
+        {
+            for (int32 PartIndex = 0; PartIndex < Parts->Num(); ++PartIndex)
+            {
+                AActor* Part = (*Parts)[PartIndex];
+                if (!Part) continue;
+                const int32 UnitIndex = Company.SoldierType == EAPSoldierType::Scout ? PartIndex : PartIndex / 2;
+                const FVector Local((UnitIndex % 3 - 1) * 70.0f, (UnitIndex / 3) * 80.0f - 35.0f,
+                    PartIndex % 2 == 1 && Company.SoldierType != EAPSoldierType::Scout ? 70.0f : 25.0f);
+                Part->SetActorLocation(VisualLocation + Local);
+            }
+        }
+        if (Company.DestinationProvinceId != INDEX_NONE && Company.TravelTicksRemaining > 0 && Company.OwnerId == 0)
+        {
+            AActor* Marker = DestinationMarkers.FindRef(Company.CompanyId);
+            if (!Marker)
+            {
+                Marker = SpawnShape(CylinderMesh, ProvinceLocation(Company.DestinationProvinceId) + FVector(0,0,72),
+                    FVector(.75f,.75f,.035f), FLinearColor(1.0f,.65f,.12f), TEXT("DestinationMarker"));
+                DestinationMarkers.Add(Company.CompanyId, Marker);
+            }
+            Marker->SetActorHiddenInGame(false);
+            Marker->SetActorLocation(ProvinceLocation(Company.DestinationProvinceId) + FVector(0,0,72));
+        }
+        else if (AActor* Marker = DestinationMarkers.FindRef(Company.CompanyId)) Marker->SetActorHiddenInGame(true);
         if (ATextRenderActor* TextLabel = Cast<ATextRenderActor>(Label))
         {
             TextLabel->GetTextRender()->SetText(FText::FromString(FString::Printf(TEXT("%s%s %s x%d"),
@@ -291,8 +464,15 @@ void AAPGreyboxWorldBuilder::UpdateCompanyVisuals(float DeltaSeconds)
         {
             if (AActor* Shape = CompanyShapes.FindRef(CompanyId)) { Shape->Destroy(); }
             if (AActor* Label = CompanyLabels.FindRef(CompanyId)) { Label->Destroy(); }
+            if (AActor* Ring = CompanySelectionRings.FindRef(CompanyId)) { Ring->Destroy(); }
+            if (AActor* Marker = DestinationMarkers.FindRef(CompanyId)) { Marker->Destroy(); }
+            if (TArray<TObjectPtr<AActor>>* Parts = CompanyFormationParts.Find(CompanyId))
+                for (AActor* Part : *Parts) if (Part) Part->Destroy();
             CompanyShapes.Remove(CompanyId);
             CompanyLabels.Remove(CompanyId);
+            CompanySelectionRings.Remove(CompanyId);
+            DestinationMarkers.Remove(CompanyId);
+            CompanyFormationParts.Remove(CompanyId);
         }
     }
 }

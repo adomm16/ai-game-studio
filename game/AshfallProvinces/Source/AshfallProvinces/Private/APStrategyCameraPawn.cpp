@@ -10,8 +10,8 @@ AAPStrategyCameraPawn::AAPStrategyCameraPawn()
 
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(SceneRoot);
-    SpringArm->TargetArmLength = 4800.0f;
-    SpringArm->SetRelativeRotation(FRotator(-58.0f, -35.0f, 0.0f));
+    SpringArm->TargetArmLength = 5200.0f;
+    SpringArm->SetRelativeRotation(FRotator(-55.0f, -32.0f, 0.0f));
     SpringArm->bDoCollisionTest = false;
 
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
@@ -21,18 +21,21 @@ AAPStrategyCameraPawn::AAPStrategyCameraPawn()
 void AAPStrategyCameraPawn::BeginPlay()
 {
     Super::BeginPlay();
-    SetActorLocation(FVector::ZeroVector);
+    SetActorLocation(FVector(0.0f, 0.0f, 120.0f));
+    DesiredArmLength = SpringArm->TargetArmLength;
 }
 
 void AAPStrategyCameraPawn::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
-    const FVector Movement(PendingMove.Y, PendingMove.X, 0.0f);
-    const FVector DesiredLocation = GetActorLocation() + Movement * 1500.0f * DeltaSeconds;
+    SmoothedMove = FMath::Vector2DInterpTo(SmoothedMove, PendingMove, DeltaSeconds, 6.0f);
+    const FVector Movement(SmoothedMove.Y, SmoothedMove.X, 0.0f);
+    const FVector DesiredLocation = GetActorLocation() + Movement * 1450.0f * DeltaSeconds;
     SetActorLocation(FVector(
         FMath::Clamp(DesiredLocation.X, -3200.0f, 3200.0f),
         FMath::Clamp(DesiredLocation.Y, -2600.0f, 2600.0f),
-        0.0f));
+        120.0f));
+    SpringArm->TargetArmLength = FMath::FInterpTo(SpringArm->TargetArmLength, DesiredArmLength, DeltaSeconds, 7.5f);
 }
 
 void AAPStrategyCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -47,5 +50,5 @@ void AAPStrategyCameraPawn::MoveForward(float Value) { PendingMove.Y = Value; }
 void AAPStrategyCameraPawn::MoveRight(float Value) { PendingMove.X = Value; }
 void AAPStrategyCameraPawn::Zoom(float Value)
 {
-    SpringArm->TargetArmLength = FMath::Clamp(SpringArm->TargetArmLength - Value * 350.0f, 1600.0f, 6200.0f);
+    DesiredArmLength = FMath::Clamp(DesiredArmLength - Value * 420.0f, 2100.0f, 6500.0f);
 }

@@ -35,7 +35,12 @@ UTextBlock* AddText(UWidgetTree* Tree, UVerticalBox* Box, const FString& Text, i
 UButton* AddCommandButton(UWidgetTree* Tree, UVerticalBox* Box, const FString& Text)
 {
     UButton* Button = Tree->ConstructWidget<UButton>();
-    Button->SetBackgroundColor(FLinearColor(0.08f, 0.32f, 0.48f, 1.0f));
+    FButtonStyle Style = Button->GetStyle();
+    Style.Normal.TintColor = FSlateColor(FLinearColor(.07f,.22f,.29f,.96f));
+    Style.Hovered.TintColor = FSlateColor(FLinearColor(.12f,.42f,.55f,1.0f));
+    Style.Pressed.TintColor = FSlateColor(FLinearColor(.68f,.42f,.12f,1.0f));
+    Style.Disabled.TintColor = FSlateColor(FLinearColor(.08f,.08f,.08f,.62f));
+    Button->SetStyle(Style);
     UTextBlock* Label = Tree->ConstructWidget<UTextBlock>();
     Label->SetText(FText::FromString(Text));
     Label->SetFont(PrototypeFont(18, true));
@@ -52,8 +57,8 @@ UBorder* AddPanel(UWidgetTree* Tree, UCanvasPanel* Root, const FAnchors& Anchors
     const FVector2D& Position, const FVector2D& Size, const FVector2D& Alignment = FVector2D::ZeroVector)
 {
     UBorder* Border = Tree->ConstructWidget<UBorder>();
-    Border->SetBrushColor(FLinearColor(0.012f, 0.02f, 0.03f, 0.96f));
-    Border->SetPadding(FMargin(18.0f));
+    Border->SetBrushColor(FLinearColor(0.012f, 0.018f, 0.023f, 0.89f));
+    Border->SetPadding(FMargin(14.0f));
     UCanvasPanelSlot* Slot = Root->AddChildToCanvas(Border);
     Slot->SetAnchors(Anchors);
     Slot->SetPosition(Position);
@@ -109,37 +114,37 @@ void UAPPrototypeWidget::BuildInterface()
     WidgetTree->RootWidget = Root;
 
     UBorder* TitlePanel = AddPanel(WidgetTree, Root, FAnchors(0.5f, 0.0f),
-        FVector2D(0.0f, 20.0f), FVector2D(560.0f, 105.0f), FVector2D(0.5f, 0.0f));
+        FVector2D(0.0f, 12.0f), FVector2D(480.0f, 82.0f), FVector2D(0.5f, 0.0f));
     UVerticalBox* Title = WidgetTree->ConstructWidget<UVerticalBox>();
     TitlePanel->SetContent(Title);
     UTextBlock* GameTitle = AddText(WidgetTree, Title, TEXT("ASHFALL PROVINCES"), 28,
         FLinearColor(1.0f, 0.72f, 0.16f), true);
     GameTitle->SetJustification(ETextJustify::Center);
-    UTextBlock* VersionTitle = AddText(WidgetTree, Title, TEXT("PLAYABLE PROTOTYPE v0.1"), 22,
+    UTextBlock* VersionTitle = AddText(WidgetTree, Title, TEXT("VISUAL PROTOTYPE v0.2"), 18,
         FLinearColor::White, true);
     VersionTitle->SetJustification(ETextJustify::Center);
 
     UBorder* OverviewPanel = AddPanel(WidgetTree, Root, FAnchors(0.0f, 0.0f),
-        FVector2D(20.0f, 20.0f), FVector2D(350.0f, 345.0f));
+        FVector2D(14.0f, 14.0f), FVector2D(300.0f, 275.0f));
     UVerticalBox* Overview = WidgetTree->ConstructWidget<UVerticalBox>();
     OverviewPanel->SetContent(Overview);
-    AddText(WidgetTree, Overview, TEXT("ASHFALL PROVINCES - PROTOTYPE v0.1"), 21,
+    AddText(WidgetTree, Overview, TEXT("REALM OVERVIEW"), 18,
         FLinearColor(1.0f, 0.72f, 0.16f), true);
-    ResourcesText = AddText(WidgetTree, Overview, TEXT("RESOURCES"), 17);
-    PopulationText = AddText(WidgetTree, Overview, TEXT("POPULATION"), 17);
-    ArmyText = AddText(WidgetTree, Overview, TEXT("ARMY"), 17);
+    ResourcesText = AddText(WidgetTree, Overview, TEXT("RESOURCES"), 15);
+    PopulationText = AddText(WidgetTree, Overview, TEXT("POPULATION"), 15);
+    ArmyText = AddText(WidgetTree, Overview, TEXT("ARMY"), 15);
 
     UBorder* MusterPanel = AddPanel(WidgetTree, Root, FAnchors(0.0f, 1.0f),
-        FVector2D(20.0f, -300.0f), FVector2D(500.0f, 280.0f));
+        FVector2D(14.0f, -245.0f), FVector2D(390.0f, 230.0f));
     UVerticalBox* Muster = WidgetTree->ConstructWidget<UVerticalBox>();
     MusterPanel->SetContent(Muster);
-    AddText(WidgetTree, Muster, TEXT("RECRUIT / MUSTER"), 22, FLinearColor(1.0f, 0.72f, 0.16f), true);
+    AddText(WidgetTree, Muster, TEXT("RECRUIT / MUSTER"), 19, FLinearColor(1.0f, 0.72f, 0.16f), true);
     SpearButton = AddCommandButton(WidgetTree, Muster, TEXT("SPEAR - 3 HOUSEHOLDS"));
     RangedButton = AddCommandButton(WidgetTree, Muster, TEXT("RANGED - 3 HOUSEHOLDS"));
     ScoutButton = AddCommandButton(WidgetTree, Muster, TEXT("SCOUT - 3 HOUSEHOLDS"));
 
     UBorder* SelectionPanel = AddPanel(WidgetTree, Root, FAnchors(1.0f, 0.0f),
-        FVector2D(-370.0f, 20.0f), FVector2D(350.0f, 410.0f));
+        FVector2D(-324.0f, 14.0f), FVector2D(310.0f, 350.0f));
     UVerticalBox* Selection = WidgetTree->ConstructWidget<UVerticalBox>();
     SelectionPanel->SetContent(Selection);
     AddText(WidgetTree, Selection, TEXT("SELECTED PROVINCE / COMPANY"), 19,

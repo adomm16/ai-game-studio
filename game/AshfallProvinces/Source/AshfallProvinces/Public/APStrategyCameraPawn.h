@@ -28,4 +28,6 @@ private:
     UPROPERTY(VisibleAnywhere) TObjectPtr<UCameraComponent> Camera;
 
     FVector2D PendingMove = FVector2D::ZeroVector;
+    FVector2D SmoothedMove = FVector2D::ZeroVector;
+    float DesiredArmLength = 5200.0f;
 };
