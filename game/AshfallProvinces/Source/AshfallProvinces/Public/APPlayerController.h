@@ -28,10 +28,12 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    virtual void BeginPlayingState() override;
     virtual void SetupInputComponent() override;
     virtual void PlayerTick(float DeltaTime) override;
 
 private:
+    void EnsurePrototypeWidget();
     void MusterSpear();
     void MusterRanged();
     void MusterScout();

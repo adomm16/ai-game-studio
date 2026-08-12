@@ -108,6 +108,17 @@ void UAPPrototypeWidget::BuildInterface()
     UCanvasPanel* Root = WidgetTree->ConstructWidget<UCanvasPanel>();
     WidgetTree->RootWidget = Root;
 
+    UBorder* TitlePanel = AddPanel(WidgetTree, Root, FAnchors(0.5f, 0.0f),
+        FVector2D(0.0f, 20.0f), FVector2D(560.0f, 105.0f), FVector2D(0.5f, 0.0f));
+    UVerticalBox* Title = WidgetTree->ConstructWidget<UVerticalBox>();
+    TitlePanel->SetContent(Title);
+    UTextBlock* GameTitle = AddText(WidgetTree, Title, TEXT("ASHFALL PROVINCES"), 28,
+        FLinearColor(1.0f, 0.72f, 0.16f), true);
+    GameTitle->SetJustification(ETextJustify::Center);
+    UTextBlock* VersionTitle = AddText(WidgetTree, Title, TEXT("PLAYABLE PROTOTYPE v0.1"), 22,
+        FLinearColor::White, true);
+    VersionTitle->SetJustification(ETextJustify::Center);
+
     UBorder* OverviewPanel = AddPanel(WidgetTree, Root, FAnchors(0.0f, 0.0f),
         FVector2D(20.0f, 20.0f), FVector2D(350.0f, 345.0f));
     UVerticalBox* Overview = WidgetTree->ConstructWidget<UVerticalBox>();

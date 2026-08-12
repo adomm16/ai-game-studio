@@ -12,6 +12,15 @@
 #include "UI/APStrategyHUD.h"
 #include "UI/APPrototypeWidget.h"
 #include "Components/Button.h"
+#include "GameFramework/HUD.h"
+#include "Misc/Paths.h"
+#include "UnrealClient.h"
+#include "Tests/AutomationCommon.h"
+
+#if WITH_EDITOR
+#include "Editor.h"
+#include "Tests/AutomationEditorCommon.h"
+#endif
 
 namespace
 {
@@ -257,5 +266,78 @@ bool FAPPrototypeWidgetRuntimeTest::RunTest(const FString& Parameters)
     }
     return true;
 }
+
+#if WITH_EDITOR
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FAPVerifyPIEPrototypeUICommand, FAutomationTestBase*, Test);
+
+bool FAPVerifyPIEPrototypeUICommand::Update()
+{
+    UWorld* PIEWorld = nullptr;
+    for (const FWorldContext& Context : GEngine->GetWorldContexts())
+    {
+        if (Context.WorldType == EWorldType::PIE)
+        {
+            PIEWorld = Context.World();
+            break;
+        }
+    }
+    Test->TestNotNull(TEXT("PIE world exists"), PIEWorld);
+    if (!PIEWorld) return true;
+
+    AAPPlayerController* Controller = Cast<AAPPlayerController>(UGameplayStatics::GetPlayerController(PIEWorld, 0));
+    Test->TestNotNull(TEXT("PIE APPlayerController exists"), Controller);
+    if (!Controller) return true;
+
+    UAPPrototypeWidget* Widget = Controller->GetPrototypeWidget();
+    Test->TestNotNull(TEXT("PIE prototype widget exists"), Widget);
+    if (!Widget) return true;
+
+    Test->TestTrue(TEXT("PIE widget IsInViewport"), Widget->IsInViewport());
+    Test->TestEqual(TEXT("PIE widget is Visible"), Widget->GetVisibility(), ESlateVisibility::Visible);
+    const FVector2D GeometrySize = Widget->GetCachedGeometry().GetLocalSize();
+    Test->TestTrue(TEXT("PIE widget geometry is non-zero"), GeometrySize.X > 0.0f && GeometrySize.Y > 0.0f);
+    UE_LOG(LogTemp, Display, TEXT("ASHFALL_PIE_WIDGET_GEOMETRY=%.0fx%.0f"), GeometrySize.X, GeometrySize.Y);
+    Test->TestNotNull(TEXT("PIE Spear button exists"), Widget->GetSpearButton());
+    Test->TestNotNull(TEXT("PIE Ranged button exists"), Widget->GetRangedButton());
+    Test->TestNotNull(TEXT("PIE Scout button exists"), Widget->GetScoutButton());
+
+    AAPStrategyHUD* StrategyHUD = Cast<AAPStrategyHUD>(Controller->GetHUD());
+    Test->TestNotNull(TEXT("PIE strategy HUD exists"), StrategyHUD);
+    if (StrategyHUD)
+    {
+        Test->TestFalse(TEXT("Old Canvas debug HUD is disabled in PIE"), StrategyHUD->bShowDebugPrototypeHUD);
+    }
+
+    UAPSimulationSubsystem* Simulation = PIEWorld->GetSubsystem<UAPSimulationSubsystem>();
+    Test->TestNotNull(TEXT("PIE authoritative simulation exists"), Simulation);
+    const int32 CompaniesBefore = Simulation ? CountPlayerCompanies(Simulation) : INDEX_NONE;
+    if (Simulation && Widget->GetSpearButton())
+    {
+        Widget->GetSpearButton()->OnClicked.Broadcast();
+        Test->TestEqual(TEXT("PIE Spear routing creates one company"),
+            CountPlayerCompanies(Simulation), CompaniesBefore + 1);
+    }
+
+    const FString ScreenshotPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots/WindowsEditor/AshfallPrototype_PIE_UI.png"));
+    FScreenshotRequest::RequestScreenshot(ScreenshotPath, true, false);
+    UE_LOG(LogTemp, Display, TEXT("ASHFALL_PIE_SCREENSHOT_REQUESTED=%s"), *ScreenshotPath);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAPPrototypePIEWidgetRuntimeTest,
+    "Ashfall.PlayablePrototype.PIEWidgetRuntime",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAPPrototypePIEWidgetRuntimeTest::RunTest(const FString& Parameters)
+{
+    FAutomationEditorCommonUtils::LoadMap(TEXT("/Game/L_FirstTest"));
+    ADD_LATENT_AUTOMATION_COMMAND(FStartPIECommand(false));
+    ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.0f));
+    ADD_LATENT_AUTOMATION_COMMAND(FAPVerifyPIEPrototypeUICommand(this));
+    ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(1.0f));
+    ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
+    return true;
+}
+#endif
 
 #endif

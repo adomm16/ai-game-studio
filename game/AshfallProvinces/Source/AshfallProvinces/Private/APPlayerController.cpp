@@ -1,6 +1,8 @@
 #include "APPlayerController.h"
 #include "Engine/EngineTypes.h"
 #include "Engine/World.h"
+#include "HAL/PlatformProcess.h"
+#include "Misc/Paths.h"
 #include "GameFramework/HUD.h"
 #include "Simulation/APSimulationSubsystem.h"
 #include "UI/APStrategyHUD.h"
@@ -35,20 +37,42 @@ void AAPPlayerController::BeginPlay()
     bEnableClickEvents = true;
     bEnableMouseOverEvents = true;
 
-    if (IsLocalController())
+}
+
+void AAPPlayerController::BeginPlayingState()
+{
+    Super::BeginPlayingState();
+    EnsurePrototypeWidget();
+}
+
+void AAPPlayerController::EnsurePrototypeWidget()
+{
+    if (!IsLocalController() || !GetLocalPlayer())
     {
-        PrototypeWidget = CreateWidget<UAPPrototypeWidget>(this, UAPPrototypeWidget::StaticClass());
-        if (PrototypeWidget)
-        {
-            PrototypeWidget->AddToPlayerScreen(100);
-            PrototypeWidget->SetVisibility(ESlateVisibility::Visible);
-            FInputModeGameAndUI InputMode;
-            InputMode.SetHideCursorDuringCapture(false);
-            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-            SetInputMode(InputMode);
-        }
+        UE_LOG(LogTemp, Warning, TEXT("ASHFALL_UI_WAITING_FOR_LOCAL_PLAYER"));
+        return;
     }
 
+    if (!PrototypeWidget)
+    {
+        PrototypeWidget = CreateWidget<UAPPrototypeWidget>(this, UAPPrototypeWidget::StaticClass());
+    }
+    if (PrototypeWidget && !PrototypeWidget->IsInViewport())
+    {
+        PrototypeWidget->AddToViewport(1000);
+        PrototypeWidget->SetVisibility(ESlateVisibility::Visible);
+        FInputModeGameAndUI InputMode;
+        InputMode.SetHideCursorDuringCapture(false);
+        InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+        SetInputMode(InputMode);
+    }
+
+    FString GitHead;
+    int32 ReturnCode = INDEX_NONE;
+    FPlatformProcess::ExecProcess(TEXT("git"), TEXT("-C \"C:/AP\" rev-parse HEAD"), &ReturnCode, &GitHead, nullptr);
+    GitHead.TrimStartAndEndInline();
+    UE_LOG(LogTemp, Display, TEXT("ASHFALL_PROJECT_PATH=%s"), *FPaths::ConvertRelativePathToFull(FPaths::GetProjectFilePath()));
+    UE_LOG(LogTemp, Display, TEXT("ASHFALL_GIT_HEAD=%s"), ReturnCode == 0 ? *GitHead : TEXT("unavailable"));
     const bool bWidgetInViewport = PrototypeWidget && PrototypeWidget->IsInViewport();
     UE_LOG(LogTemp, Display, TEXT("ASHFALL_UI_READY"));
     UE_LOG(LogTemp, Display, TEXT("WidgetInViewport=%s"), bWidgetInViewport ? TEXT("true") : TEXT("false"));
