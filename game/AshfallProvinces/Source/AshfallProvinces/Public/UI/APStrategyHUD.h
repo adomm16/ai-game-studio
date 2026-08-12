@@ -18,6 +18,7 @@ class ASHFALLPROVINCES_API AAPStrategyHUD : public AHUD
     GENERATED_BODY()
 
 public:
+    UPROPERTY(EditAnywhere, Category="Prototype Debug") bool bShowDebugPrototypeHUD = false;
     virtual void BeginPlay() override;
     virtual void DrawHUD() override;
     bool HandlePointerInput(const FVector2D& ScreenPosition, bool bRightClick);

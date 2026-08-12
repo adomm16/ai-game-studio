@@ -4,6 +4,7 @@
 #include "GameFramework/HUD.h"
 #include "Simulation/APSimulationSubsystem.h"
 #include "UI/APStrategyHUD.h"
+#include "UI/APPrototypeWidget.h"
 
 namespace
 {
@@ -25,6 +26,36 @@ AAPPlayerController::AAPPlayerController()
     bShowMouseCursor = true;
     bEnableClickEvents = true;
     bEnableMouseOverEvents = true;
+}
+
+void AAPPlayerController::BeginPlay()
+{
+    Super::BeginPlay();
+    bShowMouseCursor = true;
+    bEnableClickEvents = true;
+    bEnableMouseOverEvents = true;
+
+    if (IsLocalController())
+    {
+        PrototypeWidget = CreateWidget<UAPPrototypeWidget>(this, UAPPrototypeWidget::StaticClass());
+        if (PrototypeWidget)
+        {
+            PrototypeWidget->AddToPlayerScreen(100);
+            PrototypeWidget->SetVisibility(ESlateVisibility::Visible);
+            FInputModeGameAndUI InputMode;
+            InputMode.SetHideCursorDuringCapture(false);
+            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+            SetInputMode(InputMode);
+        }
+    }
+
+    const bool bWidgetInViewport = PrototypeWidget && PrototypeWidget->IsInViewport();
+    UE_LOG(LogTemp, Display, TEXT("ASHFALL_UI_READY"));
+    UE_LOG(LogTemp, Display, TEXT("WidgetInViewport=%s"), bWidgetInViewport ? TEXT("true") : TEXT("false"));
+    UE_LOG(LogTemp, Display, TEXT("SpearButton=%s"), PrototypeWidget && PrototypeWidget->GetSpearButton() ? TEXT("true") : TEXT("false"));
+    UE_LOG(LogTemp, Display, TEXT("RangedButton=%s"), PrototypeWidget && PrototypeWidget->GetRangedButton() ? TEXT("true") : TEXT("false"));
+    UE_LOG(LogTemp, Display, TEXT("ScoutButton=%s"), PrototypeWidget && PrototypeWidget->GetScoutButton() ? TEXT("true") : TEXT("false"));
+    UE_LOG(LogTemp, Display, TEXT("CallbacksBound=%s"), PrototypeWidget && PrototypeWidget->AreCommandCallbacksBound() ? TEXT("true") : TEXT("false"));
 }
 
 void AAPPlayerController::SetupInputComponent()

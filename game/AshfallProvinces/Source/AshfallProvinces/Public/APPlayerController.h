@@ -5,6 +5,8 @@
 #include "Simulation/APTypes.h"
 #include "APPlayerController.generated.h"
 
+class UAPPrototypeWidget;
+
 UCLASS()
 class ASHFALLPROVINCES_API AAPPlayerController : public APlayerController
 {
@@ -19,11 +21,13 @@ public:
     UFUNCTION(BlueprintPure) FString GetLastEvent() const { return LastEvent; }
     UFUNCTION(BlueprintPure) FString GetBattleResult() const { return BattleResult; }
     UFUNCTION(BlueprintPure) bool IsBattleResultVisible() const;
+    UFUNCTION(BlueprintPure) UAPPrototypeWidget* GetPrototypeWidget() const { return PrototypeWidget; }
 
     void RequestMuster(EAPSoldierType SoldierType);
     void RequestAttack();
 
 protected:
+    virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;
     virtual void PlayerTick(float DeltaTime) override;
 
@@ -55,4 +59,6 @@ private:
     FString LastEvent = TEXT("Ready - use the RECRUIT / MUSTER panel");
     FString BattleResult;
     float BattleResultExpiresAt = -1.0f;
+
+    UPROPERTY(Transient) TObjectPtr<UAPPrototypeWidget> PrototypeWidget;
 };

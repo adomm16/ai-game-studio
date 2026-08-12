@@ -10,6 +10,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Simulation/APSimulationSubsystem.h"
 #include "UI/APStrategyHUD.h"
+#include "UI/APPrototypeWidget.h"
+#include "Components/Button.h"
 
 namespace
 {
@@ -218,6 +220,40 @@ bool FAPPrototypeProvinceAndLayoutTest::RunTest(const FString& Parameters)
             && Layout.MusterPanel.IsInside(Layout.RangedButton.Max));
         TestTrue(TEXT("Scout hitbox is drawn inside panel"), Layout.MusterPanel.IsInside(Layout.ScoutButton.Min)
             && Layout.MusterPanel.IsInside(Layout.ScoutButton.Max));
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAPPrototypeWidgetRuntimeTest,
+    "Ashfall.PlayablePrototype.WidgetRuntime",
+    EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FAPPrototypeWidgetRuntimeTest::RunTest(const FString& Parameters)
+{
+    AAPPlayerController* Controller = GWorld
+        ? Cast<AAPPlayerController>(UGameplayStatics::GetPlayerController(GWorld, 0)) : nullptr;
+    TestNotNull(TEXT("Runtime APPlayerController exists"), Controller);
+    if (!Controller) return false;
+
+    UAPPrototypeWidget* Widget = Controller->GetPrototypeWidget();
+    TestNotNull(TEXT("Prototype widget was created at runtime"), Widget);
+    if (!Widget) return false;
+    TestTrue(TEXT("Widget owning player is correct"), Widget->GetOwningPlayer() == Controller);
+    TestTrue(TEXT("Widget is in viewport"), Widget->IsInViewport());
+    TestEqual(TEXT("Widget visibility is Visible"), Widget->GetVisibility(), ESlateVisibility::Visible);
+    TestNotNull(TEXT("Spear button exists"), Widget->GetSpearButton());
+    TestNotNull(TEXT("Ranged button exists"), Widget->GetRangedButton());
+    TestNotNull(TEXT("Scout button exists"), Widget->GetScoutButton());
+    TestTrue(TEXT("Command callbacks are bound"), Widget->AreCommandCallbacksBound());
+
+    UAPSimulationSubsystem* Simulation = GWorld->GetSubsystem<UAPSimulationSubsystem>();
+    const int32 CompaniesBefore = Simulation ? CountPlayerCompanies(Simulation) : INDEX_NONE;
+    TestNotNull(TEXT("Authoritative simulation exists"), Simulation);
+    if (Simulation && Widget->GetSpearButton())
+    {
+        Widget->GetSpearButton()->OnClicked.Broadcast();
+        TestEqual(TEXT("Spear click reaches controller muster command"),
+            CountPlayerCompanies(Simulation), CompaniesBefore + 1);
     }
     return true;
 }

@@ -86,6 +86,7 @@ bool AAPStrategyHUD::HandlePointerInput(const FVector2D& ScreenPosition, bool bR
 void AAPStrategyHUD::DrawHUD()
 {
     Super::DrawHUD();
+    if (!bShowDebugPrototypeHUD) return;
     const UAPSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UAPSimulationSubsystem>();
     AAPPlayerController* Controller = Cast<AAPPlayerController>(GetOwningPlayerController());
     if (!Simulation || !Controller || !Canvas || !GEngine) return;
