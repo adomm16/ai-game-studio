@@ -171,13 +171,34 @@ void AAPPlayerController::MoveSelectedCompany()
         LastEvent = TEXT("Select a company before moving");
         return;
     }
+    const TArray<FAPArmyState> Companies = Simulation->GetCompanies();
+    const FAPArmyState* Selected = Companies.FindByPredicate(
+        [this](const FAPArmyState& Company) { return Company.CompanyId == SelectedCompanyId; });
+    const TArray<FAPProvinceState> Provinces = Simulation->GetProvinces();
+    const FAPProvinceState* Current = Selected ? Provinces.FindByPredicate(
+        [Selected](const FAPProvinceState& Province) { return Province.ProvinceId == Selected->ProvinceId; }) : nullptr;
+    if (!Selected || !Current)
+    {
+        LastEvent = TEXT("Company is unavailable.");
+        return;
+    }
+    if (Selected->TravelTicksRemaining > 0)
+    {
+        LastEvent = TEXT("Company is already moving.");
+        return;
+    }
+    if (!Current->AdjacentProvinceIds.Contains(TargetProvinceId))
+    {
+        LastEvent = TEXT("Province is not adjacent.");
+        return;
+    }
     if (Simulation->OrderMove(SelectedCompanyId, TargetProvinceId))
     {
         LastEvent = FString::Printf(TEXT("Company moving to Province %d"), TargetProvinceId + 1);
     }
     else
     {
-        LastEvent = TEXT("Move rejected - target must be adjacent and company idle");
+        LastEvent = TEXT("Move rejected by simulation.");
     }
 }
 

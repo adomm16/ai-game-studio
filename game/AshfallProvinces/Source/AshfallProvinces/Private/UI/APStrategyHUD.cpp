@@ -29,6 +29,29 @@ void AAPStrategyHUD::BeginPlay()
     UE_LOG(LogTemp, Display, TEXT("APStrategyHUD active - interactive HUD enabled"));
 }
 
+FAPStrategyHUDLayout AAPStrategyHUD::CalculateLayout(float ViewWidth, float ViewHeight)
+{
+    constexpr float PanelWidth = 500.0f;
+    constexpr float PanelHeight = 260.0f;
+    constexpr float ButtonWidth = 464.0f;
+    constexpr float ButtonHeight = 50.0f;
+    const float PanelX = FMath::Clamp(20.0f, 0.0f, FMath::Max(0.0f, ViewWidth - PanelWidth));
+    const float PanelY = FMath::Clamp(ViewHeight - PanelHeight - 20.0f, 0.0f,
+        FMath::Max(0.0f, ViewHeight - PanelHeight));
+    const float ButtonX = PanelX + 18.0f;
+
+    FAPStrategyHUDLayout Layout;
+    Layout.MusterPanel = FBox2D(FVector2D(PanelX, PanelY),
+        FVector2D(PanelX + FMath::Min(PanelWidth, ViewWidth), PanelY + FMath::Min(PanelHeight, ViewHeight)));
+    Layout.SpearButton = FBox2D(FVector2D(ButtonX, PanelY + 82.0f),
+        FVector2D(ButtonX + ButtonWidth, PanelY + 82.0f + ButtonHeight));
+    Layout.RangedButton = FBox2D(FVector2D(ButtonX, PanelY + 138.0f),
+        FVector2D(ButtonX + ButtonWidth, PanelY + 138.0f + ButtonHeight));
+    Layout.ScoutButton = FBox2D(FVector2D(ButtonX, PanelY + 194.0f),
+        FVector2D(ButtonX + ButtonWidth, PanelY + 194.0f + ButtonHeight));
+    return Layout;
+}
+
 void AAPStrategyHUD::DrawPanel(float X, float Y, float Width, float Height, const FLinearColor& Color) const
 {
     const_cast<AAPStrategyHUD*>(this)->DrawRect(Color, X, Y, Width, Height);
@@ -93,7 +116,7 @@ void AAPStrategyHUD::DrawHUD()
         DrawText(Text, Color, 36.0f, Y, GEngine->GetSmallFont(), Scale, false);
         Y += 23.0f;
     };
-    Line(TEXT("ASHFALL PROVINCES"), FLinearColor(1.0f, 0.72f, 0.22f), 1.2f);
+    Line(TEXT("ASHFALL PROVINCES - PROTOTYPE v0.1"), FLinearColor(1.0f, 0.72f, 0.22f), 1.2f);
     Line(TEXT("RESOURCES"), FLinearColor(0.55f, 0.82f, 1.0f));
     Line(FString::Printf(TEXT("Food %d   Timber %d"), Resources.Food, Resources.Timber));
     Line(FString::Printf(TEXT("Metal %d   Authority %d"), Resources.Metal, Resources.Authority));
@@ -140,7 +163,7 @@ void AAPStrategyHUD::DrawHUD()
     {
         RightLine(FString::Printf(TEXT("Company %d | %s"), Selected->CompanyId, *SoldierTypeName(Selected->SoldierType)));
         RightLine(FString::Printf(TEXT("Strength %d | Province %d"), Selected->HouseholdIds.Num(), Selected->ProvinceId + 1));
-        RightLine(Selected->TravelTicksRemaining > 0 ? TEXT("Status: Moving") : TEXT("Status: Ready"));
+        RightLine(Selected->TravelTicksRemaining > 0 ? TEXT("Status: Moving") : TEXT("Status: Idle / Arrived"));
         bAttackEnabled = Selected->TravelTicksRemaining == 0 && Companies.ContainsByPredicate(
             [Selected](const FAPArmyState& Other)
             {
@@ -150,27 +173,19 @@ void AAPStrategyHUD::DrawHUD()
     }
     else RightLine(TEXT("None"));
 
-    constexpr float MusterPanelWidth = 500.0f;
-    constexpr float MusterPanelHeight = 260.0f;
-    const float MusterX = FMath::Clamp(20.0f, 0.0f, FMath::Max(0.0f, ViewWidth - MusterPanelWidth));
-    const float MusterY = FMath::Clamp(ViewHeight - MusterPanelHeight - 20.0f, 0.0f,
-        FMath::Max(0.0f, ViewHeight - MusterPanelHeight));
-    DrawPanel(MusterX, MusterY, FMath::Min(MusterPanelWidth, ViewWidth),
-        FMath::Min(MusterPanelHeight, ViewHeight), FLinearColor(0.01f, 0.015f, 0.02f, 0.98f));
+    const FAPStrategyHUDLayout Layout = CalculateLayout(ViewWidth, ViewHeight);
+    const float MusterX = Layout.MusterPanel.Min.X;
+    const float MusterY = Layout.MusterPanel.Min.Y;
+    DrawPanel(MusterX, MusterY, Layout.MusterPanel.GetSize().X,
+        Layout.MusterPanel.GetSize().Y, FLinearColor(0.01f, 0.015f, 0.02f, 0.98f));
     DrawText(TEXT("RECRUIT / MUSTER"), FLinearColor(1.0f, 0.78f, 0.15f),
         MusterX + 18.0f, MusterY + 14.0f, GEngine->GetMediumFont(), 1.15f, false);
     DrawText(TEXT("Requires 3 available workers | Company limit 4"), FLinearColor::White,
         MusterX + 18.0f, MusterY + 48.0f, GEngine->GetSmallFont(), 1.0f, false);
     const bool bCanMuster = Working >= 3 && PlayerCompanyCount < UAPSimulationSubsystem::MaxCompanies;
-    const float ButtonX = MusterX + 18.0f;
-    constexpr float ButtonWidth = 464.0f;
-    constexpr float ButtonHeight = 50.0f;
-    SpearButton = FBox2D(FVector2D(ButtonX, MusterY + 82.0f),
-        FVector2D(ButtonX + ButtonWidth, MusterY + 82.0f + ButtonHeight));
-    RangedButton = FBox2D(FVector2D(ButtonX, MusterY + 138.0f),
-        FVector2D(ButtonX + ButtonWidth, MusterY + 138.0f + ButtonHeight));
-    ScoutButton = FBox2D(FVector2D(ButtonX, MusterY + 194.0f),
-        FVector2D(ButtonX + ButtonWidth, MusterY + 194.0f + ButtonHeight));
+    SpearButton = Layout.SpearButton;
+    RangedButton = Layout.RangedButton;
+    ScoutButton = Layout.ScoutButton;
     DrawButton(TEXT("SPEAR - 3 HOUSEHOLDS"), SpearButton, bCanMuster);
     DrawButton(TEXT("RANGED - 3 HOUSEHOLDS"), RangedButton, bCanMuster);
     DrawButton(TEXT("SCOUT - 3 HOUSEHOLDS"), ScoutButton, bCanMuster);

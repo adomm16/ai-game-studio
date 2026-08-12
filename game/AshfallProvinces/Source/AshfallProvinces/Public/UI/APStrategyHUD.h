@@ -4,6 +4,14 @@
 #include "GameFramework/HUD.h"
 #include "APStrategyHUD.generated.h"
 
+struct ASHFALLPROVINCES_API FAPStrategyHUDLayout
+{
+    FBox2D MusterPanel;
+    FBox2D SpearButton;
+    FBox2D RangedButton;
+    FBox2D ScoutButton;
+};
+
 UCLASS()
 class ASHFALLPROVINCES_API AAPStrategyHUD : public AHUD
 {
@@ -13,6 +21,7 @@ public:
     virtual void BeginPlay() override;
     virtual void DrawHUD() override;
     bool HandlePointerInput(const FVector2D& ScreenPosition, bool bRightClick);
+    static FAPStrategyHUDLayout CalculateLayout(float ViewWidth, float ViewHeight);
 
 private:
     void DrawPanel(float X, float Y, float Width, float Height, const FLinearColor& Color) const;
