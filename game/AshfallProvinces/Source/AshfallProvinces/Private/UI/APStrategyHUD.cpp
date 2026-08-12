@@ -23,6 +23,12 @@ FString OwnerName(int32 OwnerId)
 }
 }
 
+void AAPStrategyHUD::BeginPlay()
+{
+    Super::BeginPlay();
+    UE_LOG(LogTemp, Display, TEXT("APStrategyHUD active - interactive HUD enabled"));
+}
+
 void AAPStrategyHUD::DrawPanel(float X, float Y, float Width, float Height, const FLinearColor& Color) const
 {
     const_cast<AAPStrategyHUD*>(this)->DrawRect(Color, X, Y, Width, Height);
@@ -61,6 +67,10 @@ void AAPStrategyHUD::DrawHUD()
     AAPPlayerController* Controller = Cast<AAPPlayerController>(GetOwningPlayerController());
     if (!Simulation || !Controller || !Canvas || !GEngine) return;
 
+    const float ViewWidth = Canvas->ClipX > 0.0f ? Canvas->ClipX : static_cast<float>(Canvas->SizeX);
+    const float ViewHeight = Canvas->ClipY > 0.0f ? Canvas->ClipY : static_cast<float>(Canvas->SizeY);
+    if (ViewWidth <= 0.0f || ViewHeight <= 0.0f) return;
+
     const FAPResources Resources = Simulation->GetResources();
     const TArray<FAPHouseholdState> Households = Simulation->GetHouseholds();
     const TArray<FAPArmyState> Companies = Simulation->GetCompanies();
@@ -95,7 +105,7 @@ void AAPStrategyHUD::DrawHUD()
     Line(FString::Printf(TEXT("Controlled Provinces %d / %d"), Controlled, UAPSimulationSubsystem::ProvinceCount));
     Line(TEXT("WASD / arrows pan | wheel zoom"), FLinearColor(0.65f, 0.65f, 0.65f), 0.85f);
 
-    const float RightX = Canvas->SizeX - 340.0f;
+    const float RightX = FMath::Max(20.0f, ViewWidth - 340.0f);
     DrawPanel(RightX, 20.0f, 320.0f, 330.0f, FLinearColor(0.025f, 0.035f, 0.045f, 0.88f));
     float RightY = 38.0f;
     auto RightLine = [this, RightX, &RightY](const FString& Text, const FLinearColor& Color = FLinearColor::White)
@@ -140,32 +150,47 @@ void AAPStrategyHUD::DrawHUD()
     }
     else RightLine(TEXT("None"));
 
-    const float MusterY = Canvas->SizeY - 205.0f;
-    DrawPanel(20.0f, MusterY, 440.0f, 125.0f, FLinearColor(0.025f, 0.035f, 0.045f, 0.92f));
-    DrawText(TEXT("RECRUIT / MUSTER   Cost: 3 households | requires workers | limit 4"),
-        FLinearColor(1.0f, 0.72f, 0.22f), 36.0f, MusterY + 12.0f, GEngine->GetSmallFont(), 0.9f, false);
+    constexpr float MusterPanelWidth = 500.0f;
+    constexpr float MusterPanelHeight = 260.0f;
+    const float MusterX = FMath::Clamp(20.0f, 0.0f, FMath::Max(0.0f, ViewWidth - MusterPanelWidth));
+    const float MusterY = FMath::Clamp(ViewHeight - MusterPanelHeight - 20.0f, 0.0f,
+        FMath::Max(0.0f, ViewHeight - MusterPanelHeight));
+    DrawPanel(MusterX, MusterY, FMath::Min(MusterPanelWidth, ViewWidth),
+        FMath::Min(MusterPanelHeight, ViewHeight), FLinearColor(0.01f, 0.015f, 0.02f, 0.98f));
+    DrawText(TEXT("RECRUIT / MUSTER"), FLinearColor(1.0f, 0.78f, 0.15f),
+        MusterX + 18.0f, MusterY + 14.0f, GEngine->GetMediumFont(), 1.15f, false);
+    DrawText(TEXT("Requires 3 available workers | Company limit 4"), FLinearColor::White,
+        MusterX + 18.0f, MusterY + 48.0f, GEngine->GetSmallFont(), 1.0f, false);
     const bool bCanMuster = Working >= 3 && PlayerCompanyCount < UAPSimulationSubsystem::MaxCompanies;
-    SpearButton = FBox2D(FVector2D(36.0f, MusterY + 48.0f), FVector2D(156.0f, MusterY + 94.0f));
-    RangedButton = FBox2D(FVector2D(166.0f, MusterY + 48.0f), FVector2D(286.0f, MusterY + 94.0f));
-    ScoutButton = FBox2D(FVector2D(296.0f, MusterY + 48.0f), FVector2D(416.0f, MusterY + 94.0f));
-    DrawButton(TEXT("Spear [3]"), SpearButton, bCanMuster);
-    DrawButton(TEXT("Ranged [3]"), RangedButton, bCanMuster);
-    DrawButton(TEXT("Scout [3]"), ScoutButton, bCanMuster);
+    const float ButtonX = MusterX + 18.0f;
+    constexpr float ButtonWidth = 464.0f;
+    constexpr float ButtonHeight = 50.0f;
+    SpearButton = FBox2D(FVector2D(ButtonX, MusterY + 82.0f),
+        FVector2D(ButtonX + ButtonWidth, MusterY + 82.0f + ButtonHeight));
+    RangedButton = FBox2D(FVector2D(ButtonX, MusterY + 138.0f),
+        FVector2D(ButtonX + ButtonWidth, MusterY + 138.0f + ButtonHeight));
+    ScoutButton = FBox2D(FVector2D(ButtonX, MusterY + 194.0f),
+        FVector2D(ButtonX + ButtonWidth, MusterY + 194.0f + ButtonHeight));
+    DrawButton(TEXT("SPEAR - 3 HOUSEHOLDS"), SpearButton, bCanMuster);
+    DrawButton(TEXT("RANGED - 3 HOUSEHOLDS"), RangedButton, bCanMuster);
+    DrawButton(TEXT("SCOUT - 3 HOUSEHOLDS"), ScoutButton, bCanMuster);
 
     AttackButton = FBox2D(FVector2D(RightX + 18.0f, 285.0f), FVector2D(RightX + 302.0f, 333.0f));
     DrawButton(TEXT("ATTACK"), AttackButton, bAttackEnabled);
 
-    DrawPanel(480.0f, Canvas->SizeY - 95.0f, Canvas->SizeX - 960.0f, 70.0f,
+    const float EventX = FMath::Min(540.0f, ViewWidth * 0.38f);
+    const float EventWidth = FMath::Max(0.0f, ViewWidth - EventX - 360.0f);
+    DrawPanel(EventX, ViewHeight - 95.0f, EventWidth, 70.0f,
         FLinearColor(0.025f, 0.035f, 0.045f, 0.92f));
-    DrawText(TEXT("LAST EVENT"), FLinearColor(1.0f, 0.72f, 0.22f), 496.0f, Canvas->SizeY - 83.0f,
+    DrawText(TEXT("LAST EVENT"), FLinearColor(1.0f, 0.72f, 0.22f), EventX + 16.0f, ViewHeight - 83.0f,
         GEngine->GetSmallFont(), 0.9f, false);
-    DrawText(Controller->GetLastEvent(), FLinearColor::White, 496.0f, Canvas->SizeY - 57.0f,
+    DrawText(Controller->GetLastEvent(), FLinearColor::White, EventX + 16.0f, ViewHeight - 57.0f,
         GEngine->GetSmallFont(), 1.0f, false);
 
     if (Controller->IsBattleResultVisible())
     {
-        const float BoxX = Canvas->SizeX * 0.5f - 180.0f;
-        const float BoxY = Canvas->SizeY * 0.5f - 110.0f;
+        const float BoxX = ViewWidth * 0.5f - 180.0f;
+        const float BoxY = ViewHeight * 0.5f - 110.0f;
         DrawPanel(BoxX, BoxY, 360.0f, 220.0f, FLinearColor(0.04f, 0.05f, 0.06f, 0.96f));
         DrawText(TEXT("BATTLE RESULT"), FLinearColor(1.0f, 0.72f, 0.22f), BoxX + 18.0f, BoxY + 16.0f,
             GEngine->GetSmallFont(), 1.2f, false);

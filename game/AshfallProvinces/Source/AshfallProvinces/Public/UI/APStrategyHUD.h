@@ -10,6 +10,7 @@ class ASHFALLPROVINCES_API AAPStrategyHUD : public AHUD
     GENERATED_BODY()
 
 public:
+    virtual void BeginPlay() override;
     virtual void DrawHUD() override;
     bool HandlePointerInput(const FVector2D& ScreenPosition, bool bRightClick);
 
