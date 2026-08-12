@@ -11,4 +11,15 @@ class ASHFALLPROVINCES_API AAPStrategyHUD : public AHUD
 
 public:
     virtual void DrawHUD() override;
+    bool HandlePointerInput(const FVector2D& ScreenPosition, bool bRightClick);
+
+private:
+    void DrawPanel(float X, float Y, float Width, float Height, const FLinearColor& Color) const;
+    void DrawButton(const FString& Label, const FBox2D& Bounds, bool bEnabled) const;
+
+    FBox2D SpearButton;
+    FBox2D RangedButton;
+    FBox2D ScoutButton;
+    FBox2D AttackButton;
+    bool bAttackEnabled = false;
 };

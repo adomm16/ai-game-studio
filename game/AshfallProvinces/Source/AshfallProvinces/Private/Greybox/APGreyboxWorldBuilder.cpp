@@ -86,7 +86,9 @@ AActor* AAPGreyboxWorldBuilder::SpawnShape(UStaticMesh* Mesh, const FVector& Loc
     Component->SetMobility(EComponentMobility::Movable);
     Actor->SetActorScale3D(Scale);
     Component->SetStaticMesh(Mesh);
-    Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    Component->SetCollisionResponseToAllChannels(ECR_Ignore);
+    Component->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
     if (BaseMaterial)
     {
         UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Actor);
@@ -137,9 +139,11 @@ void AAPGreyboxWorldBuilder::SpawnProvince(const FAPProvinceState& Province)
         : (Province.OwnerId == 1 ? FLinearColor(0.65f, 0.12f, 0.08f) : FLinearColor(0.30f, 0.28f, 0.24f));
     const FString OwnerLabel = Province.OwnerId == 0 ? TEXT("PLAYER") : (Province.OwnerId == 1 ? TEXT("AI") : TEXT("NEUTRAL"));
     const FVector Location = ProvinceLocation(Province.ProvinceId);
-    ProvinceShapes.Add(Province.ProvinceId, SpawnShape(CylinderMesh, Location,
+    AActor* ProvinceShape = SpawnShape(CylinderMesh, Location,
         FVector(ProvinceRadiusScale, ProvinceRadiusScale, 0.18f), Color,
-        FString::Printf(TEXT("Province_%d"), Province.ProvinceId)));
+        FString::Printf(TEXT("Province_%d"), Province.ProvinceId));
+    if (ProvinceShape) ProvinceShape->Tags.Add(FName(*FString::Printf(TEXT("ProvinceId:%d"), Province.ProvinceId)));
+    ProvinceShapes.Add(Province.ProvinceId, ProvinceShape);
     ProvinceLabels.Add(Province.ProvinceId, SpawnLabel(
         FString::Printf(TEXT("PROVINCE %d - %s"), Province.ProvinceId + 1, *OwnerLabel),
         Location + FVector(0.0f, 0.0f, 130.0f), Province.OwnerId == 1 ? FColor::Red : FColor::White));
@@ -199,6 +203,10 @@ void AAPGreyboxWorldBuilder::UpdateProvinceVisuals()
             {
                 Material->SetVectorParameterValue(TEXT("Color"), Color);
             }
+            const AAPPlayerController* Controller = Cast<AAPPlayerController>(GetWorld()->GetFirstPlayerController());
+            Shape->SetActorScale3D(Controller && Controller->GetSelectedProvinceId() == Province.ProvinceId
+                ? FVector(ProvinceRadiusScale * 1.08f, ProvinceRadiusScale * 1.08f, 0.28f)
+                : FVector(ProvinceRadiusScale, ProvinceRadiusScale, 0.18f));
         }
         if (ATextRenderActor* Label = Cast<ATextRenderActor>(ProvinceLabels.FindRef(Province.ProvinceId)))
         {
@@ -248,6 +256,7 @@ void AAPGreyboxWorldBuilder::UpdateCompanyVisuals(float DeltaSeconds)
                 ? ConeMesh.Get() : (Company.SoldierType == EAPSoldierType::Ranged ? CubeMesh.Get() : SphereMesh.Get());
             Shape = SpawnShape(Mesh, DesiredLocation, FVector(0.8f, 0.8f, 1.6f), Color,
                 FString::Printf(TEXT("Company_%d"), Company.CompanyId));
+            if (Shape) Shape->Tags.Add(FName(*FString::Printf(TEXT("CompanyId:%d"), Company.CompanyId)));
             CompanyShapes.Add(Company.CompanyId, Shape);
         }
         AActor* Label = CompanyLabels.FindRef(Company.CompanyId);

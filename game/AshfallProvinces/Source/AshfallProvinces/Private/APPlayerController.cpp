@@ -1,5 +1,9 @@
 #include "APPlayerController.h"
+#include "Engine/EngineTypes.h"
+#include "Engine/World.h"
+#include "GameFramework/HUD.h"
 #include "Simulation/APSimulationSubsystem.h"
+#include "UI/APStrategyHUD.h"
 
 namespace
 {
@@ -38,7 +42,23 @@ void AAPPlayerController::SetupInputComponent()
     InputComponent->BindAction(TEXT("ResolveBattle"), IE_Pressed, this, &AAPPlayerController::ResolveSelectedBattle);
     InputComponent->BindAction(TEXT("SaveSimulation"), IE_Pressed, this, &AAPPlayerController::SaveGame);
     InputComponent->BindAction(TEXT("LoadSimulation"), IE_Pressed, this, &AAPPlayerController::LoadGame);
+    InputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &AAPPlayerController::HandleLeftMouseButton);
+    InputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &AAPPlayerController::HandleRightMouseButton);
 }
+
+void AAPPlayerController::PlayerTick(float DeltaTime)
+{
+    Super::PlayerTick(DeltaTime);
+    TryAutoCapture();
+}
+
+bool AAPPlayerController::IsBattleResultVisible() const
+{
+    return !BattleResult.IsEmpty() && GetWorld() && GetWorld()->GetTimeSeconds() < BattleResultExpiresAt;
+}
+
+void AAPPlayerController::RequestMuster(EAPSoldierType SoldierType) { MusterCompany(SoldierType); }
+void AAPPlayerController::RequestAttack() { ResolveSelectedBattle(); }
 
 void AAPPlayerController::MusterSpear() { MusterCompany(EAPSoldierType::Spear); }
 void AAPPlayerController::MusterRanged() { MusterCompany(EAPSoldierType::Ranged); }
@@ -139,6 +159,7 @@ void AAPPlayerController::SelectCompanySlot(int32 SlotIndex)
 void AAPPlayerController::CycleTargetProvince()
 {
     TargetProvinceId = (TargetProvinceId + 1) % UAPSimulationSubsystem::ProvinceCount;
+    SelectedProvinceId = TargetProvinceId;
     LastEvent = FString::Printf(TEXT("Target Province %d"), TargetProvinceId + 1);
 }
 
@@ -188,6 +209,7 @@ void AAPPlayerController::ResolveSelectedBattle()
     if (DefenderBefore)
     {
         const int32 DefenderId = DefenderBefore->CompanyId;
+        const int32 DefenderStrengthBefore = DefenderBefore->HouseholdIds.Num();
         if (!Simulation->ResolveBattle(SelectedCompanyId, DefenderId))
         {
             LastEvent = TEXT("Battle could not be resolved");
@@ -200,9 +222,12 @@ void AAPPlayerController::ResolveSelectedBattle()
             [DefenderId](const FAPArmyState& Company) { return Company.CompanyId == DefenderId; });
         const int32 StrengthAfter = AttackerAfter ? AttackerAfter->HouseholdIds.Num() : 0;
         const int32 Casualties = StrengthBefore - StrengthAfter;
+        const int32 DefenderStrengthAfter = DefenderAfter ? DefenderAfter->HouseholdIds.Num() : 0;
+        const int32 EnemyCasualties = DefenderStrengthBefore - DefenderStrengthAfter;
+        bool bCaptured = false;
         if (!DefenderAfter || DefenderAfter->HouseholdIds.IsEmpty())
         {
-            const bool bCaptured = Simulation->CaptureProvince(SelectedCompanyId);
+            bCaptured = Simulation->CaptureProvince(SelectedCompanyId);
             LastEvent = FString::Printf(TEXT("Battle won - %d casualties%s"), Casualties,
                 bCaptured ? TEXT(" - province captured") : TEXT(""));
         }
@@ -211,6 +236,12 @@ void AAPPlayerController::ResolveSelectedBattle()
             LastEvent = FString::Printf(TEXT("Battle resolved - %d casualties - enemy strength %d"),
                 Casualties, DefenderAfter->HouseholdIds.Num());
         }
+        const bool bVictory = DefenderStrengthAfter == 0 && StrengthAfter > 0;
+        BattleResult = FString::Printf(
+            TEXT("%s\nPlayer casualties: %d\nEnemy casualties: %d\nRemaining strength: %d\nProvince captured: %s"),
+            bVictory ? TEXT("Victory") : TEXT("Defeat"), Casualties, EnemyCasualties,
+            StrengthAfter, bCaptured ? TEXT("Yes") : TEXT("No"));
+        BattleResultExpiresAt = GetWorld()->GetTimeSeconds() + 8.0f;
         return;
     }
 
@@ -221,6 +252,98 @@ void AAPPlayerController::ResolveSelectedBattle()
     else
     {
         LastEvent = TEXT("No enemy or capturable province here");
+    }
+}
+
+void AAPPlayerController::HandleLeftMouseButton()
+{
+    float MouseX = 0.0f;
+    float MouseY = 0.0f;
+    if (!GetMousePosition(MouseX, MouseY)) return;
+    if (AAPStrategyHUD* StrategyHUD = Cast<AAPStrategyHUD>(GetHUD()))
+    {
+        if (StrategyHUD->HandlePointerInput(FVector2D(MouseX, MouseY), false)) return;
+    }
+    HandleWorldClick(false);
+}
+
+void AAPPlayerController::HandleRightMouseButton()
+{
+    float MouseX = 0.0f;
+    float MouseY = 0.0f;
+    if (!GetMousePosition(MouseX, MouseY)) return;
+    if (AAPStrategyHUD* StrategyHUD = Cast<AAPStrategyHUD>(GetHUD()))
+    {
+        if (StrategyHUD->HandlePointerInput(FVector2D(MouseX, MouseY), true)) return;
+    }
+    HandleWorldClick(true);
+}
+
+bool AAPPlayerController::HandleWorldClick(bool bMoveOrder)
+{
+    FHitResult Hit;
+    if (!GetHitResultUnderCursor(ECC_Visibility, false, Hit) || !Hit.GetActor()) return false;
+    const TArray<FName>& ActorTags = Hit.GetActor()->Tags;
+    for (const FName& Tag : ActorTags)
+    {
+        const FString Value = Tag.ToString();
+        if (!bMoveOrder && Value.StartsWith(TEXT("CompanyId:")))
+        {
+            SelectCompany(FCString::Atoi(*Value.RightChop(10)));
+            return true;
+        }
+        if (Value.StartsWith(TEXT("ProvinceId:")))
+        {
+            const int32 ProvinceId = FCString::Atoi(*Value.RightChop(11));
+            SelectProvince(ProvinceId);
+            if (bMoveOrder)
+            {
+                TargetProvinceId = ProvinceId;
+                MoveSelectedCompany();
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+void AAPPlayerController::SelectProvince(int32 ProvinceId)
+{
+    SelectedProvinceId = ProvinceId;
+    TargetProvinceId = ProvinceId;
+    LastEvent = FString::Printf(TEXT("Selected Province %d"), ProvinceId + 1);
+}
+
+void AAPPlayerController::SelectCompany(int32 CompanyId)
+{
+    const UAPSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UAPSimulationSubsystem>();
+    const TArray<FAPArmyState> Companies = Simulation ? Simulation->GetCompanies() : TArray<FAPArmyState>();
+    const FAPArmyState* Company = Companies.FindByPredicate(
+        [CompanyId](const FAPArmyState& Entry) { return Entry.CompanyId == CompanyId; });
+    if (!Company || Company->OwnerId != 0 || Company->HouseholdIds.IsEmpty())
+    {
+        LastEvent = TEXT("Only player companies can be selected");
+        return;
+    }
+    SelectedCompanyId = CompanyId;
+    SelectedProvinceId = Company->ProvinceId;
+    LastEvent = FString::Printf(TEXT("Selected Company %d (%s)"), CompanyId, *SoldierTypeName(Company->SoldierType));
+}
+
+void AAPPlayerController::TryAutoCapture()
+{
+    UAPSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UAPSimulationSubsystem>();
+    if (!Simulation) return;
+    const TArray<FAPProvinceState> Provinces = Simulation->GetProvinces();
+    for (const FAPArmyState& Company : Simulation->GetCompanies())
+    {
+        if (Company.OwnerId != 0 || Company.TravelTicksRemaining > 0 || Company.HouseholdIds.IsEmpty()) continue;
+        const FAPProvinceState* Province = Provinces.FindByPredicate(
+            [&Company](const FAPProvinceState& Entry) { return Entry.ProvinceId == Company.ProvinceId; });
+        if (Province && Province->OwnerId == INDEX_NONE && Simulation->CaptureProvince(Company.CompanyId))
+        {
+            LastEvent = FString::Printf(TEXT("Province %d captured by Company %d"), Province->ProvinceId + 1, Company.CompanyId);
+        }
     }
 }
 

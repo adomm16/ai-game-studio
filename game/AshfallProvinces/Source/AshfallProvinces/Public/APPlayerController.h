@@ -14,11 +14,18 @@ public:
     AAPPlayerController();
 
     UFUNCTION(BlueprintPure) int32 GetSelectedCompanyId() const { return SelectedCompanyId; }
+    UFUNCTION(BlueprintPure) int32 GetSelectedProvinceId() const { return SelectedProvinceId; }
     UFUNCTION(BlueprintPure) int32 GetTargetProvinceId() const { return TargetProvinceId; }
     UFUNCTION(BlueprintPure) FString GetLastEvent() const { return LastEvent; }
+    UFUNCTION(BlueprintPure) FString GetBattleResult() const { return BattleResult; }
+    UFUNCTION(BlueprintPure) bool IsBattleResultVisible() const;
+
+    void RequestMuster(EAPSoldierType SoldierType);
+    void RequestAttack();
 
 protected:
     virtual void SetupInputComponent() override;
+    virtual void PlayerTick(float DeltaTime) override;
 
 private:
     void MusterSpear();
@@ -35,8 +42,17 @@ private:
     void ResolveSelectedBattle();
     void SaveGame();
     void LoadGame();
+    void HandleLeftMouseButton();
+    void HandleRightMouseButton();
+    bool HandleWorldClick(bool bMoveOrder);
+    void SelectProvince(int32 ProvinceId);
+    void SelectCompany(int32 CompanyId);
+    void TryAutoCapture();
 
     int32 SelectedCompanyId = INDEX_NONE;
+    int32 SelectedProvinceId = 0;
     int32 TargetProvinceId = 1;
-    FString LastEvent = TEXT("Ready - muster a company with M, R or C");
+    FString LastEvent = TEXT("Ready - use the RECRUIT / MUSTER panel");
+    FString BattleResult;
+    float BattleResultExpiresAt = -1.0f;
 };
