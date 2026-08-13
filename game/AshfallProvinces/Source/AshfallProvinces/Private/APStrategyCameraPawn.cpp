@@ -52,3 +52,10 @@ void AAPStrategyCameraPawn::Zoom(float Value)
 {
     DesiredArmLength = FMath::Clamp(DesiredArmLength - Value * 420.0f, 2100.0f, 6500.0f);
 }
+
+void AAPStrategyCameraPawn::FocusSettlementForVisualProof()
+{
+    SetActorLocation(FVector(-1600.0f, -850.0f, 120.0f));
+    DesiredArmLength = 2450.0f;
+    SpringArm->TargetArmLength = DesiredArmLength;
+}

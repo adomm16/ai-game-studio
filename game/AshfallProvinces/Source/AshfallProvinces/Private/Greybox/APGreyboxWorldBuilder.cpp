@@ -4,12 +4,15 @@
 #include "Components/TextRenderComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
+#include "Engine/Light.h"
 #include "Engine/SkyLight.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/TextRenderActor.h"
+#include "EngineUtils.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "APPlayerController.h"
 #include "Simulation/APSimulationSubsystem.h"
@@ -57,12 +60,32 @@ void AAPGreyboxWorldBuilder::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
     UpdateCompanyVisuals(DeltaSeconds);
+    FaceLabelsToCamera();
     CompanyRefreshAccumulator += DeltaSeconds;
     if (CompanyRefreshAccumulator >= 0.5f)
     {
         CompanyRefreshAccumulator = 0.0f;
         UpdateProvinceVisuals();
     }
+}
+
+UHierarchicalInstancedStaticMeshComponent* AAPGreyboxWorldBuilder::CreateInstanceLayer(
+    const FString& Name, UStaticMesh* Mesh, const FLinearColor& Color)
+{
+    UHierarchicalInstancedStaticMeshComponent* Layer = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, *Name);
+    Layer->SetupAttachment(GetRootComponent());
+    Layer->SetStaticMesh(Mesh);
+    Layer->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Layer->SetMobility(EComponentMobility::Movable);
+    if (BaseMaterial)
+    {
+        UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Layer);
+        Material->SetVectorParameterValue(TEXT("Color"), Color);
+        Layer->SetMaterial(0, Material);
+    }
+    AddInstanceComponent(Layer);
+    Layer->RegisterComponent();
+    return Layer;
 }
 
 FVector AAPGreyboxWorldBuilder::ProvinceLocation(int32 ProvinceId)
@@ -111,7 +134,8 @@ AActor* AAPGreyboxWorldBuilder::SpawnLabel(const FString& Text, const FVector& L
     TextComponent->SetText(FText::FromString(Text));
     TextComponent->SetTextRenderColor(Color);
     TextComponent->SetHorizontalAlignment(EHorizTextAligment::EHTA_Center);
-    TextComponent->SetWorldSize(80.0f);
+    TextComponent->SetWorldSize(62.0f);
+    WorldLabels.Add(Label);
     return Label;
 }
 
@@ -143,41 +167,64 @@ void AAPGreyboxWorldBuilder::SpawnStaticWorld()
 
 void AAPGreyboxWorldBuilder::SpawnTerrain()
 {
-    // Broad overlapping low-poly shelves hide the editor checkerboard and create a warm ashland basin.
-    SpawnShape(CubeMesh, FVector(0, 0, 12), FVector(48, 35, 0.22f),
-        FLinearColor(0.12f, 0.105f, 0.08f), TEXT("AshfallTerrainBase"));
-    static const FVector TileLocations[] = {
-        FVector(-2200,-1200,25), FVector(-650,-1300,20), FVector(1050,-1150,28), FVector(2250,-700,38),
-        FVector(-2100,750,35), FVector(-500,700,24), FVector(1050,850,32), FVector(2350,1100,44),
-        FVector(-600,1900,48), FVector(1050,1950,55)
-    };
-    static const FLinearColor TileColors[] = {
-        FLinearColor(.21f,.23f,.14f), FLinearColor(.28f,.23f,.14f), FLinearColor(.19f,.22f,.13f),
-        FLinearColor(.27f,.17f,.12f), FLinearColor(.18f,.20f,.12f), FLinearColor(.25f,.22f,.15f),
-        FLinearColor(.16f,.19f,.12f), FLinearColor(.30f,.19f,.13f), FLinearColor(.20f,.18f,.13f),
-        FLinearColor(.24f,.20f,.14f)
-    };
-    for (int32 Index = 0; Index < UE_ARRAY_COUNT(TileLocations); ++Index)
+    // A deterministic height-sampled modular surface fully masks the template floor across camera bounds.
+    TerrainDryInstances = CreateInstanceLayer(TEXT("TerrainDryHISM"), CubeMesh, FLinearColor(.25f,.19f,.12f));
+    TerrainGreenInstances = CreateInstanceLayer(TEXT("TerrainGreenHISM"), CubeMesh, FLinearColor(.18f,.22f,.12f));
+    TerrainAshInstances = CreateInstanceLayer(TEXT("TerrainAshHISM"), CubeMesh, FLinearColor(.16f,.135f,.11f));
+    constexpr float PatchSize = 520.0f;
+    for (int32 Y = -7; Y <= 7; ++Y)
     {
-        SpawnShape(SphereMesh, TileLocations[Index], FVector(14.0f, 11.0f, 0.30f + (Index % 3) * .08f),
-            TileColors[Index], FString::Printf(TEXT("TerrainRegion_%02d"), Index), Index * 17.0f);
+        for (int32 X = -9; X <= 9; ++X)
+        {
+            const float Ridge = 42.0f * FMath::Sin(X * .58f) + 30.0f * FMath::Cos(Y * .72f)
+                + 22.0f * FMath::Sin((X + Y) * .41f);
+            const float AIHardness = X > 2 ? FMath::Max(0.0f, (X - 2) * 9.0f) : 0.0f;
+            const float Height = FMath::Max(42.0f, 58.0f + Ridge + AIHardness);
+            const FVector Location(X * PatchSize, Y * PatchSize, Height - 52.0f);
+            const FVector Scale(PatchSize / 100.0f + .06f, PatchSize / 100.0f + .06f, 1.05f);
+            UHierarchicalInstancedStaticMeshComponent* Layer = X > 3 ? TerrainAshInstances.Get()
+                : ((X + Y * 2) % 5 == 0 ? TerrainGreenInstances.Get() : TerrainDryInstances.Get());
+            Layer->AddInstance(FTransform(FRotator(0,0,0), Location, Scale));
+            ++TerrainPatchCount;
+        }
     }
-    // Deterministic rock/brush silhouettes give scale without an actor-heavy foliage system.
-    for (int32 Index = 0; Index < 24; ++Index)
+    TreeInstances = CreateInstanceLayer(TEXT("EnvironmentTreesHISM"), ConeMesh, FLinearColor(.10f,.15f,.075f));
+    RockInstances = CreateInstanceLayer(TEXT("EnvironmentRocksHISM"), SphereMesh, FLinearColor(.20f,.18f,.15f));
+    for (int32 Index = 0; Index < 72; ++Index)
     {
-        const float X = -2850.0f + (Index % 8) * 820.0f;
-        const float Y = -2050.0f + (Index / 8) * 1900.0f + (Index % 2) * 240.0f;
-        SpawnShape(ConeMesh, FVector(X, Y, 45.0f), FVector(.32f,.32f,.75f + (Index % 3) * .2f),
-            FLinearColor(.12f,.15f,.09f), TEXT("AshPine"), Index * 29.0f);
+        const int32 Col = Index % 12;
+        const int32 Row = Index / 12;
+        const float X = -3900.0f + Col * 710.0f + (Row % 2) * 170.0f;
+        const float Y = -3000.0f + Row * 1150.0f + (Col % 3) * 90.0f;
+        const bool bTree = (Index % 3) != 0;
+        UHierarchicalInstancedStaticMeshComponent* Layer = bTree ? TreeInstances.Get() : RockInstances.Get();
+        const FVector Scale = bTree ? FVector(.28f,.28f,.65f + (Index % 4) * .12f)
+            : FVector(.32f + (Index % 3) * .1f,.24f,.18f);
+        Layer->AddInstance(FTransform(FRotator(0,Index * 37.0f,0), FVector(X,Y,85), Scale));
+        ++EnvironmentInstanceCount;
+    }
+    // A dry creek and rocky ridge act as readable natural borders without affecting collision/gameplay.
+    for (int32 Segment = 0; Segment < 13; ++Segment)
+    {
+        const float T = Segment / 12.0f;
+        const FVector Creek(-3300.0f + T * 6600.0f, 250.0f + FMath::Sin(T * PI * 2.0f) * 320.0f, 78.0f);
+        SpawnShape(CubeMesh, Creek, FVector(3.0f,.38f,.025f), FLinearColor(.20f,.14f,.095f), TEXT("DryCreekSegment"),
+            FMath::Cos(T * PI * 2.0f) * 18.0f);
     }
 }
 
 void AAPGreyboxWorldBuilder::SpawnAtmosphere()
 {
+    for (TActorIterator<ALight> It(GetWorld()); It; ++It)
+    {
+        It->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+    }
     ADirectionalLight* Sun = GetWorld()->SpawnActor<ADirectionalLight>(FVector::ZeroVector, FRotator(-48,-32,0));
+    Sun->GetLightComponent()->SetMobility(EComponentMobility::Movable);
     Sun->GetLightComponent()->SetIntensity(5.2f);
     Sun->GetLightComponent()->SetLightColor(FLinearColor(1.0f,.72f,.48f));
     ASkyLight* Sky = GetWorld()->SpawnActor<ASkyLight>();
+    Sky->GetLightComponent()->SetMobility(EComponentMobility::Movable);
     Sky->GetLightComponent()->SetIntensity(0.8f);
     AExponentialHeightFog* Fog = GetWorld()->SpawnActor<AExponentialHeightFog>();
     Fog->GetComponent()->SetFogDensity(0.00065f);
@@ -197,7 +244,7 @@ void AAPGreyboxWorldBuilder::SpawnProvince(const FAPProvinceState& Province)
     if (ProvinceShape) ProvinceShape->Tags.Add(FName(*FString::Printf(TEXT("ProvinceId:%d"), Province.ProvinceId)));
     ProvinceShapes.Add(Province.ProvinceId, ProvinceShape);
     ProvinceLabels.Add(Province.ProvinceId, SpawnLabel(
-        FString::Printf(TEXT("PROVINCE %d - %s"), Province.ProvinceId + 1, *OwnerLabel),
+        FString::Printf(TEXT("PROVINCE %d\n%s"), Province.ProvinceId + 1, *OwnerLabel),
         Location + FVector(0.0f, 0.0f, 175.0f), Province.OwnerId == 1 ? FColor(255,110,90) : FColor::White));
     // Ownership banner: restrained color accent rather than flooding the terrain.
     SpawnShape(CubeMesh, Location + FVector(-260,0,120), FVector(.08f,.08f,1.5f),
@@ -209,15 +256,24 @@ void AAPGreyboxWorldBuilder::SpawnRoute(int32 FromProvinceId, int32 ToProvinceId
 {
     const FVector Start = ProvinceLocation(FromProvinceId);
     const FVector End = ProvinceLocation(ToProvinceId);
-    const FVector Delta = End - Start;
-    const FVector Midpoint = (Start + End) * 0.5f + FVector(0.0f, 0.0f, 58.0f);
-    const float LengthScale = Delta.Size2D() / 100.0f;
-    const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Delta.Y, Delta.X));
-    SpawnShape(CubeMesh, Midpoint, FVector(LengthScale, 0.34f, 0.045f),
-        FLinearColor(0.30f, 0.20f, 0.11f), TEXT("ProvinceRoute"), Yaw);
-    SpawnShape(CubeMesh, Midpoint + FVector(0,0,7), FVector(LengthScale, 0.20f, 0.028f),
-        FLinearColor(0.46f, 0.34f, 0.20f), TEXT("ProvinceRoadSurface"), Yaw);
-    RouteVisualCount += 2;
+    const FVector FlatNormal = FVector::CrossProduct((End - Start).GetSafeNormal2D(), FVector::UpVector);
+    const float Bend = ((FromProvinceId + ToProvinceId) % 2 ? 1.0f : -1.0f) * 150.0f;
+    FVector Previous = Start;
+    constexpr int32 Segments = 7;
+    for (int32 Segment = 1; Segment <= Segments; ++Segment)
+    {
+        const float T = Segment / static_cast<float>(Segments);
+        FVector Current = FMath::Lerp(Start, End, T) + FlatNormal * FMath::Sin(T * PI) * Bend;
+        Current.Z = 92.0f;
+        Previous.Z = 92.0f;
+        const FVector Delta = Current - Previous;
+        const FVector Midpoint = (Previous + Current) * .5f;
+        const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Delta.Y, Delta.X));
+        SpawnShape(CubeMesh, Midpoint, FVector(Delta.Size2D()/100.0f + .08f,.30f,.035f),
+            FLinearColor(.34f,.24f,.13f), TEXT("CurvedProvinceRoad"), Yaw);
+        Previous = Current;
+        ++RouteVisualCount;
+    }
 }
 
 void AAPGreyboxWorldBuilder::SpawnSettlement()
@@ -248,6 +304,13 @@ void AAPGreyboxWorldBuilder::SpawnSettlement()
             Road < 2 ? FVector(1.7f,.16f,.025f) : FVector(.16f,1.5f,.025f),
             FLinearColor(.39f,.28f,.16f), TEXT("TownLane"));
     }
+    for (int32 Fence = 0; Fence < 6; ++Fence)
+    {
+        SpawnShape(CubeMesh, TownCenter + FVector(-390 + Fence * 155, 365, 55), FVector(.65f,.035f,.28f),
+            FLinearColor(.24f,.14f,.07f), TEXT("SettlementFence"));
+    }
+    SpawnShape(CubeMesh, TownCenter + FVector(-210,-150,55), FVector(.28f,.28f,.34f),
+        FLinearColor(.30f,.18f,.07f), TEXT("StorageCrates"));
 }
 
 void AAPGreyboxWorldBuilder::SpawnBuilding(const FVector& Location, float Yaw, const FString& Name,
@@ -271,6 +334,11 @@ void AAPGreyboxWorldBuilder::SpawnAIAndNeutralLandmarks()
     }
     SpawnLabel(TEXT("CINDER WATCH\nAI OUTPOST"), AI + FVector(0,0,220), FColor(255,90,70));
     bHasAIOutpostVisual = true;
+    for (int32 Wall = 0; Wall < 4; ++Wall)
+    {
+        SpawnShape(CubeMesh, AI + FVector(-210 + Wall * 140,-175,45), FVector(.62f,.12f,.55f),
+            FLinearColor(.28f,.22f,.20f), TEXT("AIWallSegment"));
+    }
     for (int32 ProvinceId = 1; ProvinceId < 5; ++ProvinceId)
     {
         const FVector P = ProvinceLocation(ProvinceId) + FVector(120,-90,95);
@@ -283,7 +351,25 @@ void AAPGreyboxWorldBuilder::SpawnAIAndNeutralLandmarks()
         {
             SpawnBuilding(P, ProvinceId * 31.0f, TEXT("NeutralHamlet"), FLinearColor(.37f,.30f,.21f), .55f);
         }
+        ++NeutralLandmarkCount;
     }
+}
+
+void AAPGreyboxWorldBuilder::FaceLabelsToCamera()
+{
+    const APlayerController* Controller = GetWorld()->GetFirstPlayerController();
+    if (!Controller) return;
+    FVector CameraLocation;
+    FRotator CameraRotation;
+    Controller->GetPlayerViewPoint(CameraLocation, CameraRotation);
+    FRotator BillboardRotation = (-CameraRotation.Vector()).Rotation();
+    BillboardRotation.Roll = 0.0f;
+    auto Face = [&BillboardRotation](AActor* Label)
+    {
+        if (!Label) return;
+        Label->SetActorRotation(BillboardRotation);
+    };
+    for (AActor* Label : WorldLabels) Face(Label);
 }
 
 void AAPGreyboxWorldBuilder::UpdateProvinceVisuals()
@@ -315,7 +401,7 @@ void AAPGreyboxWorldBuilder::UpdateProvinceVisuals()
             const FString OwnerLabel = Province.OwnerId == 0 ? TEXT("PLAYER")
                 : (Province.OwnerId == 1 ? TEXT("AI") : TEXT("NEUTRAL"));
             Label->GetTextRender()->SetText(FText::FromString(FString::Printf(
-                TEXT("PROVINCE %d - %s"), Province.ProvinceId + 1, *OwnerLabel)));
+                TEXT("PROVINCE %d\n%s"), Province.ProvinceId + 1, *OwnerLabel)));
             Label->GetTextRender()->SetTextRenderColor(
                 Province.OwnerId == 0 ? FColor::Cyan : (Province.OwnerId == 1 ? FColor::Red : FColor::White));
         }

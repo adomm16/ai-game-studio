@@ -120,7 +120,7 @@ void UAPPrototypeWidget::BuildInterface()
     UTextBlock* GameTitle = AddText(WidgetTree, Title, TEXT("ASHFALL PROVINCES"), 28,
         FLinearColor(1.0f, 0.72f, 0.16f), true);
     GameTitle->SetJustification(ETextJustify::Center);
-    UTextBlock* VersionTitle = AddText(WidgetTree, Title, TEXT("VISUAL PROTOTYPE v0.2"), 18,
+    UTextBlock* VersionTitle = AddText(WidgetTree, Title, TEXT("WORLD & ART DIRECTION v0.3"), 17,
         FLinearColor::White, true);
     VersionTitle->SetJustification(ETextJustify::Center);
 

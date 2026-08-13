@@ -8,6 +8,9 @@
 #include "Greybox/APGreyboxWorldBuilder.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Engine/GameViewportClient.h"
+#include "ImageUtils.h"
+#include "Misc/FileHelper.h"
 #include "Kismet/GameplayStatics.h"
 #include "Simulation/APSimulationSubsystem.h"
 #include "UI/APStrategyHUD.h"
@@ -330,6 +333,9 @@ bool FAPVerifyPIEPrototypeUICommand::Update()
         Test->TestTrue(TEXT("Player settlement visual exists"), VisualBuilder->HasPlayerSettlementVisual());
         Test->TestTrue(TEXT("Eight player building visuals exist"), VisualBuilder->GetPlayerBuildingVisualCount() >= 8);
         Test->TestTrue(TEXT("AI outpost visual exists"), VisualBuilder->HasAIOutpostVisual());
+        Test->TestTrue(TEXT("Neutral landmark variants exist"), VisualBuilder->GetNeutralLandmarkCount() >= 4);
+        Test->TestTrue(TEXT("Environment instances exist"), VisualBuilder->GetEnvironmentInstanceCount() >= 60);
+        Test->TestTrue(TEXT("Terrain grid covers intended camera framing"), VisualBuilder->GetTerrainPatchCount() >= 285);
         Test->TestTrue(TEXT("Company visual spawns after muster"), VisualBuilder->GetCompanyVisualCount() >= 1);
         Test->TestTrue(TEXT("Mustered company selection ring is active"),
             VisualBuilder->IsCompanyVisualSelected(Controller->GetSelectedCompanyId()));
@@ -344,10 +350,47 @@ bool FAPVerifyPIEPrototypeUICommand::Update()
             FVector::Dist2D(BeforeMove, AfterMove) > 500.0f);
     }
 
-    const FString ScreenshotPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots/WindowsEditor/AshfallVisualPrototype_v0_2.png"));
+    const FString ScreenshotPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots/WindowsEditor/Ashfall_v0_3_Overview.png"));
     GEngine->Exec(PIEWorld, TEXT("DisableAllScreenMessages"));
     FScreenshotRequest::RequestScreenshot(ScreenshotPath, true, false);
     UE_LOG(LogTemp, Display, TEXT("ASHFALL_PIE_SCREENSHOT_REQUESTED=%s"), *ScreenshotPath);
+    return true;
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FAPFocusSettlementVisualCommand, FAutomationTestBase*, Test);
+
+bool FAPFocusSettlementVisualCommand::Update()
+{
+    UWorld* PIEWorld = nullptr;
+    for (const FWorldContext& Context : GEngine->GetWorldContexts())
+        if (Context.WorldType == EWorldType::PIE) { PIEWorld = Context.World(); break; }
+    Test->TestNotNull(TEXT("PIE world remains active for settlement proof"), PIEWorld);
+    if (!PIEWorld) return true;
+    AAPStrategyCameraPawn* Camera = Cast<AAPStrategyCameraPawn>(UGameplayStatics::GetPlayerPawn(PIEWorld, 0));
+    Test->TestNotNull(TEXT("Strategy camera exists for settlement proof"), Camera);
+    if (Camera) Camera->FocusSettlementForVisualProof();
+    return true;
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FAPCaptureSettlementVisualCommand, FAutomationTestBase*, Test);
+
+bool FAPCaptureSettlementVisualCommand::Update()
+{
+    UWorld* PIEWorld = nullptr;
+    for (const FWorldContext& Context : GEngine->GetWorldContexts())
+        if (Context.WorldType == EWorldType::PIE) { PIEWorld = Context.World(); break; }
+    UGameViewportClient* GameViewport = PIEWorld ? PIEWorld->GetGameViewport() : nullptr;
+    FViewport* Viewport = GameViewport ? GameViewport->Viewport : nullptr;
+    Test->TestNotNull(TEXT("PIE game viewport exists for direct settlement capture"), Viewport);
+    if (!Viewport) return true;
+    TArray<FColor> Pixels;
+    const FIntPoint Size = Viewport->GetSizeXY();
+    Test->TestTrue(TEXT("PIE game viewport pixels can be read"), Viewport->ReadPixels(Pixels));
+    TArray64<uint8> PngData;
+    FImageUtils::PNGCompressImageArray(Size.X, Size.Y, Pixels, PngData);
+    const FString Path = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots/WindowsEditor/Ashfall_v0_3_Settlement.png"));
+    Test->TestTrue(TEXT("Settlement PNG saved from PIE game viewport"), FFileHelper::SaveArrayToFile(PngData, *Path));
+    UE_LOG(LogTemp, Display, TEXT("ASHFALL_SETTLEMENT_SCREENSHOT_CAPTURED=%s SIZE=%dx%d"), *Path, Size.X, Size.Y);
     return true;
 }
 
@@ -361,7 +404,11 @@ bool FAPPrototypePIEWidgetRuntimeTest::RunTest(const FString& Parameters)
     ADD_LATENT_AUTOMATION_COMMAND(FStartPIECommand(false));
     ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.0f));
     ADD_LATENT_AUTOMATION_COMMAND(FAPVerifyPIEPrototypeUICommand(this));
+    ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.0f));
+    ADD_LATENT_AUTOMATION_COMMAND(FAPFocusSettlementVisualCommand(this));
     ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(1.0f));
+    ADD_LATENT_AUTOMATION_COMMAND(FAPCaptureSettlementVisualCommand(this));
+    ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.0f));
     ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
     return true;
 }

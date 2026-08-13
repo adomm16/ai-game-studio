@@ -7,6 +7,7 @@
 
 class UMaterialInterface;
 class UStaticMesh;
+class UHierarchicalInstancedStaticMeshComponent;
 
 UCLASS()
 class ASHFALLPROVINCES_API AAPGreyboxWorldBuilder : public AActor
@@ -22,6 +23,9 @@ public:
     int32 GetPlayerBuildingVisualCount() const { return PlayerBuildingVisualCount; }
     bool HasPlayerSettlementVisual() const { return bHasPlayerSettlementVisual; }
     bool HasAIOutpostVisual() const { return bHasAIOutpostVisual; }
+    int32 GetNeutralLandmarkCount() const { return NeutralLandmarkCount; }
+    int32 GetEnvironmentInstanceCount() const { return EnvironmentInstanceCount; }
+    int32 GetTerrainPatchCount() const { return TerrainPatchCount; }
     int32 GetCompanyVisualCount() const { return CompanyShapes.Num(); }
     bool IsCompanyVisualSelected(int32 CompanyId) const;
     FVector GetCompanyVisualLocation(int32 CompanyId) const;
@@ -41,6 +45,9 @@ private:
     void SpawnBuilding(const FVector& Location, float Yaw, const FString& Name, const FLinearColor& WallColor,
         float Scale = 1.0f);
     void SpawnUnitFormation(int32 CompanyId, EAPSoldierType Type, const FVector& Location, const FLinearColor& Color);
+    UHierarchicalInstancedStaticMeshComponent* CreateInstanceLayer(const FString& Name, UStaticMesh* Mesh,
+        const FLinearColor& Color);
+    void FaceLabelsToCamera();
     void UpdateCompanyVisuals(float DeltaSeconds);
     void UpdateProvinceVisuals();
 
@@ -53,8 +60,14 @@ private:
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> CompanyLabels;
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> ProvinceShapes;
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> ProvinceLabels;
+    UPROPERTY() TArray<TObjectPtr<AActor>> WorldLabels;
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> CompanySelectionRings;
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> DestinationMarkers;
+    UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TerrainDryInstances;
+    UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TerrainGreenInstances;
+    UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TerrainAshInstances;
+    UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TreeInstances;
+    UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> RockInstances;
     TMap<int32, TArray<TObjectPtr<AActor>>> CompanyFormationParts;
 
     float CompanyRefreshAccumulator = 0.0f;
@@ -62,4 +75,7 @@ private:
     int32 PlayerBuildingVisualCount = 0;
     bool bHasPlayerSettlementVisual = false;
     bool bHasAIOutpostVisual = false;
+    int32 NeutralLandmarkCount = 0;
+    int32 EnvironmentInstanceCount = 0;
+    int32 TerrainPatchCount = 0;
 };

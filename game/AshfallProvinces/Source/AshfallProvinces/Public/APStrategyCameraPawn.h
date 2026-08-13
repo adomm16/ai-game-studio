@@ -17,6 +17,7 @@ public:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+    void FocusSettlementForVisualProof();
 
 private:
     void MoveForward(float Value);
