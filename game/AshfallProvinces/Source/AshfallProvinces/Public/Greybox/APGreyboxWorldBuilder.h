@@ -6,8 +6,10 @@
 #include "APGreyboxWorldBuilder.generated.h"
 
 class UMaterialInterface;
+class UMaterialInstanceDynamic;
 class UStaticMesh;
 class UHierarchicalInstancedStaticMeshComponent;
+class UProceduralMeshComponent;
 
 UCLASS()
 class ASHFALLPROVINCES_API AAPGreyboxWorldBuilder : public AActor
@@ -47,6 +49,8 @@ private:
     void SpawnUnitFormation(int32 CompanyId, EAPSoldierType Type, const FVector& Location, const FLinearColor& Color);
     UHierarchicalInstancedStaticMeshComponent* CreateInstanceLayer(const FString& Name, UStaticMesh* Mesh,
         const FLinearColor& Color);
+    UMaterialInstanceDynamic* GetSharedMaterial(const FLinearColor& Color);
+    void LogVisualStats();
     void FaceLabelsToCamera();
     void UpdateCompanyVisuals(float DeltaSeconds);
     void UpdateProvinceVisuals();
@@ -56,6 +60,7 @@ private:
     UPROPERTY() TObjectPtr<UStaticMesh> ConeMesh;
     UPROPERTY() TObjectPtr<UStaticMesh> SphereMesh;
     UPROPERTY() TObjectPtr<UMaterialInterface> BaseMaterial;
+    UPROPERTY() TMap<uint32, TObjectPtr<UMaterialInstanceDynamic>> SharedMaterials;
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> CompanyShapes;
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> CompanyLabels;
     UPROPERTY() TMap<int32, TObjectPtr<AActor>> ProvinceShapes;
@@ -66,8 +71,10 @@ private:
     UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TerrainDryInstances;
     UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TerrainGreenInstances;
     UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TerrainAshInstances;
+    UPROPERTY() TObjectPtr<UProceduralMeshComponent> ContinuousTerrain;
     UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TreeInstances;
     UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> RockInstances;
+    UPROPERTY() TObjectPtr<UHierarchicalInstancedStaticMeshComponent> RidgeInstances;
     TMap<int32, TArray<TObjectPtr<AActor>>> CompanyFormationParts;
 
     float CompanyRefreshAccumulator = 0.0f;
@@ -78,4 +85,5 @@ private:
     int32 NeutralLandmarkCount = 0;
     int32 EnvironmentInstanceCount = 0;
     int32 TerrainPatchCount = 0;
+    bool bVisualStatsLogged = false;
 };

@@ -3,9 +3,11 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/DirectionalLightComponent.h"
+#include "Components/ActorComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SkyLightComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
 #include "Engine/Light.h"
@@ -13,6 +15,7 @@
 #include "Engine/StaticMeshActor.h"
 #include "Engine/TextRenderActor.h"
 #include "EngineUtils.h"
+#include "GameFramework/WorldSettings.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "APPlayerController.h"
 #include "Simulation/APSimulationSubsystem.h"
@@ -61,6 +64,11 @@ void AAPGreyboxWorldBuilder::Tick(float DeltaSeconds)
     Super::Tick(DeltaSeconds);
     UpdateCompanyVisuals(DeltaSeconds);
     FaceLabelsToCamera();
+    if (!bVisualStatsLogged)
+    {
+        LogVisualStats();
+        bVisualStatsLogged = true;
+    }
     CompanyRefreshAccumulator += DeltaSeconds;
     if (CompanyRefreshAccumulator >= 0.5f)
     {
@@ -77,26 +85,32 @@ UHierarchicalInstancedStaticMeshComponent* AAPGreyboxWorldBuilder::CreateInstanc
     Layer->SetStaticMesh(Mesh);
     Layer->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     Layer->SetMobility(EComponentMobility::Movable);
-    if (BaseMaterial)
-    {
-        UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Layer);
-        Material->SetVectorParameterValue(TEXT("Color"), Color);
-        Layer->SetMaterial(0, Material);
-    }
+    if (UMaterialInstanceDynamic* Material = GetSharedMaterial(Color)) Layer->SetMaterial(0, Material);
     AddInstanceComponent(Layer);
     Layer->RegisterComponent();
     return Layer;
 }
 
+UMaterialInstanceDynamic* AAPGreyboxWorldBuilder::GetSharedMaterial(const FLinearColor& Color)
+{
+    const uint32 Key = Color.ToFColor(true).DWColor();
+    if (TObjectPtr<UMaterialInstanceDynamic>* Existing = SharedMaterials.Find(Key)) return Existing->Get();
+    if (!BaseMaterial) return nullptr;
+    UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+    Material->SetVectorParameterValue(TEXT("Color"), Color);
+    SharedMaterials.Add(Key, Material);
+    return Material;
+}
+
 FVector AAPGreyboxWorldBuilder::ProvinceLocation(int32 ProvinceId)
 {
     static const FVector Locations[] = {
-        FVector(-1600.0f, -850.0f, 30.0f),
-        FVector(0.0f, -950.0f, 30.0f),
-        FVector(1600.0f, -700.0f, 30.0f),
-        FVector(-1450.0f, 850.0f, 30.0f),
-        FVector(100.0f, 850.0f, 30.0f),
-        FVector(1650.0f, 900.0f, 30.0f)
+        FVector(-1600.0f, -850.0f, 105.0f),
+        FVector(0.0f, -950.0f, 105.0f),
+        FVector(1600.0f, -700.0f, 105.0f),
+        FVector(-1450.0f, 850.0f, 105.0f),
+        FVector(100.0f, 850.0f, 105.0f),
+        FVector(1650.0f, 900.0f, 105.0f)
     };
     return Locations[FMath::Clamp(ProvinceId, 0, 5)];
 }
@@ -118,12 +132,7 @@ AActor* AAPGreyboxWorldBuilder::SpawnShape(UStaticMesh* Mesh, const FVector& Loc
     Component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     Component->SetCollisionResponseToAllChannels(ECR_Ignore);
     Component->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
-    if (BaseMaterial)
-    {
-        UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Actor);
-        Material->SetVectorParameterValue(TEXT("Color"), Color);
-        Component->SetMaterial(0, Material);
-    }
+    if (UMaterialInstanceDynamic* Material = GetSharedMaterial(Color)) Component->SetMaterial(0, Material);
     return Actor;
 }
 
@@ -134,7 +143,7 @@ AActor* AAPGreyboxWorldBuilder::SpawnLabel(const FString& Text, const FVector& L
     TextComponent->SetText(FText::FromString(Text));
     TextComponent->SetTextRenderColor(Color);
     TextComponent->SetHorizontalAlignment(EHorizTextAligment::EHTA_Center);
-    TextComponent->SetWorldSize(62.0f);
+    TextComponent->SetWorldSize(82.0f);
     WorldLabels.Add(Label);
     return Label;
 }
@@ -167,29 +176,65 @@ void AAPGreyboxWorldBuilder::SpawnStaticWorld()
 
 void AAPGreyboxWorldBuilder::SpawnTerrain()
 {
-    // A deterministic height-sampled modular surface fully masks the template floor across camera bounds.
-    TerrainDryInstances = CreateInstanceLayer(TEXT("TerrainDryHISM"), CubeMesh, FLinearColor(.25f,.19f,.12f));
-    TerrainGreenInstances = CreateInstanceLayer(TEXT("TerrainGreenHISM"), CubeMesh, FLinearColor(.18f,.22f,.12f));
-    TerrainAshInstances = CreateInstanceLayer(TEXT("TerrainAshHISM"), CubeMesh, FLinearColor(.16f,.135f,.11f));
-    constexpr float PatchSize = 520.0f;
-    for (int32 Y = -7; Y <= 7; ++Y)
+    // A single deterministic heightfield gives the whole camera range one continuous, seam-free surface.
+    ContinuousTerrain = NewObject<UProceduralMeshComponent>(this, TEXT("ContinuousAshfallTerrain"));
+    AddInstanceComponent(ContinuousTerrain);
+    ContinuousTerrain->RegisterComponent();
+    ContinuousTerrain->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    constexpr int32 Columns = 41;
+    constexpr int32 Rows = 35;
+    constexpr float Width = 18000.0f;
+    constexpr float Depth = 15000.0f;
+    auto HeightAt = [](float X, float Y)
     {
-        for (int32 X = -9; X <= 9; ++X)
+        const float Broad = 14.0f * FMath::Sin(X * .00055f) + 10.0f * FMath::Cos(Y * .00072f);
+        const float Ridge = 11.0f * FMath::Sin((X + Y) * .00095f) + 7.0f * FMath::Cos((X - Y) * .00125f);
+        const float Valley = -12.0f * FMath::Exp(-FMath::Square((Y - 250.0f - FMath::Sin(X * .0008f) * 420.0f) / 900.0f));
+        const float AIHardness = X > 1700.0f ? FMath::Min(16.0f, (X - 1700.0f) * .003f) : 0.0f;
+        return FMath::Max(58.0f, 72.0f + Broad + Ridge + Valley + AIHardness);
+    };
+    TArray<FVector> Vertices;
+    TArray<int32> Triangles;
+    TArray<FVector> Normals;
+    TArray<FVector2D> UVs;
+    TArray<FLinearColor> Colors;
+    TArray<FProcMeshTangent> Tangents;
+    Vertices.Reserve(Columns * Rows);
+    for (int32 YIndex = 0; YIndex < Rows; ++YIndex)
+    {
+        const float Y = -Depth * .5f + Depth * YIndex / (Rows - 1);
+        for (int32 XIndex = 0; XIndex < Columns; ++XIndex)
         {
-            const float Ridge = 42.0f * FMath::Sin(X * .58f) + 30.0f * FMath::Cos(Y * .72f)
-                + 22.0f * FMath::Sin((X + Y) * .41f);
-            const float AIHardness = X > 2 ? FMath::Max(0.0f, (X - 2) * 9.0f) : 0.0f;
-            const float Height = FMath::Max(42.0f, 58.0f + Ridge + AIHardness);
-            const FVector Location(X * PatchSize, Y * PatchSize, Height - 52.0f);
-            const FVector Scale(PatchSize / 100.0f + .06f, PatchSize / 100.0f + .06f, 1.05f);
-            UHierarchicalInstancedStaticMeshComponent* Layer = X > 3 ? TerrainAshInstances.Get()
-                : ((X + Y * 2) % 5 == 0 ? TerrainGreenInstances.Get() : TerrainDryInstances.Get());
-            Layer->AddInstance(FTransform(FRotator(0,0,0), Location, Scale));
-            ++TerrainPatchCount;
+            const float X = -Width * .5f + Width * XIndex / (Columns - 1);
+            Vertices.Add(FVector(X, Y, HeightAt(X, Y)));
+            const float Dx = HeightAt(X + 40.0f, Y) - HeightAt(X - 40.0f, Y);
+            const float Dy = HeightAt(X, Y + 40.0f) - HeightAt(X, Y - 40.0f);
+            Normals.Add(FVector(-Dx / 80.0f, -Dy / 80.0f, 1.0f).GetSafeNormal());
+            UVs.Add(FVector2D(XIndex / static_cast<float>(Columns - 1), YIndex / static_cast<float>(Rows - 1)));
+            const float Fertility = FMath::Sin(X * .0012f) * FMath::Cos(Y * .0011f);
+            Colors.Add(Fertility > .48f ? FLinearColor(.28f,.31f,.17f) :
+                (X > 2200.0f ? FLinearColor(.18f,.14f,.11f) : FLinearColor(.30f,.22f,.14f)));
+            Tangents.Add(FProcMeshTangent(1, 0, Dx / 80.0f));
         }
     }
+    for (int32 YIndex = 0; YIndex < Rows - 1; ++YIndex)
+    {
+        for (int32 XIndex = 0; XIndex < Columns - 1; ++XIndex)
+        {
+            const int32 A = YIndex * Columns + XIndex;
+            const int32 B = A + 1;
+            const int32 C = A + Columns;
+            const int32 D = C + 1;
+            Triangles.Append({A, C, B, B, C, D});
+        }
+    }
+    ContinuousTerrain->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
+    if (UMaterialInstanceDynamic* Material = GetSharedMaterial(FLinearColor(.29f,.21f,.13f)))
+        ContinuousTerrain->SetMaterial(0, Material);
+    TerrainPatchCount = 1;
     TreeInstances = CreateInstanceLayer(TEXT("EnvironmentTreesHISM"), ConeMesh, FLinearColor(.10f,.15f,.075f));
     RockInstances = CreateInstanceLayer(TEXT("EnvironmentRocksHISM"), SphereMesh, FLinearColor(.20f,.18f,.15f));
+    RidgeInstances = CreateInstanceLayer(TEXT("NaturalRidgesHISM"), SphereMesh, FLinearColor(.22f,.17f,.12f));
     for (int32 Index = 0; Index < 72; ++Index)
     {
         const int32 Col = Index % 12;
@@ -200,32 +245,59 @@ void AAPGreyboxWorldBuilder::SpawnTerrain()
         UHierarchicalInstancedStaticMeshComponent* Layer = bTree ? TreeInstances.Get() : RockInstances.Get();
         const FVector Scale = bTree ? FVector(.28f,.28f,.65f + (Index % 4) * .12f)
             : FVector(.32f + (Index % 3) * .1f,.24f,.18f);
-        Layer->AddInstance(FTransform(FRotator(0,Index * 37.0f,0), FVector(X,Y,85), Scale));
+        Layer->AddInstance(FTransform(FRotator(0,Index * 37.0f,0), FVector(X,Y,125), Scale));
+        ++EnvironmentInstanceCount;
+    }
+    for (int32 Index = 0; Index < 36; ++Index)
+    {
+        const int32 Cluster = Index / 12;
+        const int32 Local = Index % 12;
+        const FVector Center(-3000.0f + Cluster * 3000.0f, -2250.0f + Cluster * 2050.0f, 115.0f);
+        const float Angle = Local * 137.5f + Cluster * 31.0f;
+        const float Radius = 120.0f + Local * 62.0f;
+        const FVector Position = Center + FVector(FMath::Cos(FMath::DegreesToRadians(Angle)) * Radius,
+            FMath::Sin(FMath::DegreesToRadians(Angle)) * Radius * .48f, (Local % 4) * 9.0f);
+        RidgeInstances->AddInstance(FTransform(FRotator(0, Angle, 0), Position,
+            FVector(.72f + (Local % 4) * .16f, .46f + (Local % 3) * .08f, .24f + (Local % 3) * .07f)));
         ++EnvironmentInstanceCount;
     }
     // A dry creek and rocky ridge act as readable natural borders without affecting collision/gameplay.
     for (int32 Segment = 0; Segment < 13; ++Segment)
     {
         const float T = Segment / 12.0f;
-        const FVector Creek(-3300.0f + T * 6600.0f, 250.0f + FMath::Sin(T * PI * 2.0f) * 320.0f, 78.0f);
-        SpawnShape(CubeMesh, Creek, FVector(3.0f,.38f,.025f), FLinearColor(.20f,.14f,.095f), TEXT("DryCreekSegment"),
+        const FVector Creek(-3300.0f + T * 6600.0f, 250.0f + FMath::Sin(T * PI * 2.0f) * 320.0f, 125.0f);
+        SpawnShape(CubeMesh, Creek, FVector(6.0f,.38f,.025f), FLinearColor(.20f,.14f,.095f), TEXT("DryCreekSegment"),
             FMath::Cos(T * PI * 2.0f) * 18.0f);
     }
 }
 
 void AAPGreyboxWorldBuilder::SpawnAtmosphere()
 {
-    for (TActorIterator<ALight> It(GetWorld()); It; ++It)
+    ADirectionalLight* Sun = nullptr;
+    for (TActorIterator<ADirectionalLight> It(GetWorld()); It; ++It)
     {
-        It->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+        if (!Sun) Sun = *It;
+        else It->Destroy();
     }
-    ADirectionalLight* Sun = GetWorld()->SpawnActor<ADirectionalLight>(FVector::ZeroVector, FRotator(-48,-32,0));
+    if (!Sun) Sun = GetWorld()->SpawnActor<ADirectionalLight>();
+    Sun->SetActorRotation(FRotator(-48,-32,0));
     Sun->GetLightComponent()->SetMobility(EComponentMobility::Movable);
     Sun->GetLightComponent()->SetIntensity(5.2f);
     Sun->GetLightComponent()->SetLightColor(FLinearColor(1.0f,.72f,.48f));
-    ASkyLight* Sky = GetWorld()->SpawnActor<ASkyLight>();
+
+    ASkyLight* Sky = nullptr;
+    for (TActorIterator<ASkyLight> It(GetWorld()); It; ++It)
+    {
+        if (!Sky) Sky = *It;
+        else It->Destroy();
+    }
+    if (!Sky) Sky = GetWorld()->SpawnActor<ASkyLight>();
     Sky->GetLightComponent()->SetMobility(EComponentMobility::Movable);
     Sky->GetLightComponent()->SetIntensity(0.8f);
+
+    // Existing template lights are now dynamic, so discard the level's stale precomputed-lighting counter.
+    GetWorld()->GetWorldSettings()->bForceNoPrecomputedLighting = true;
+    GetWorld()->SetMapNeedsLightingFullyRebuilt(0, 0);
     AExponentialHeightFog* Fog = GetWorld()->SpawnActor<AExponentialHeightFog>();
     Fog->GetComponent()->SetFogDensity(0.00065f);
     Fog->GetComponent()->SetFogInscatteringColor(FLinearColor(.42f,.31f,.22f));
@@ -264,8 +336,8 @@ void AAPGreyboxWorldBuilder::SpawnRoute(int32 FromProvinceId, int32 ToProvinceId
     {
         const float T = Segment / static_cast<float>(Segments);
         FVector Current = FMath::Lerp(Start, End, T) + FlatNormal * FMath::Sin(T * PI) * Bend;
-        Current.Z = 92.0f;
-        Previous.Z = 92.0f;
+        Current.Z = 132.0f;
+        Previous.Z = 132.0f;
         const FVector Delta = Current - Previous;
         const FVector Midpoint = (Previous + Current) * .5f;
         const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Delta.Y, Delta.X));
@@ -282,18 +354,17 @@ void AAPGreyboxWorldBuilder::SpawnSettlement()
     SpawnShape(CylinderMesh, TownCenter, FVector(2.6f, 2.2f, 0.10f),
         FLinearColor(0.24f, 0.19f, 0.12f), TEXT("PlayerTownSquare"));
     SpawnBuilding(TownCenter + FVector(0,0,55), 45.0f, TEXT("PlayerKeep"),
-        FLinearColor(.38f,.34f,.27f), 1.55f);
-    SpawnLabel(TEXT("ASHFALL HOLD"), TownCenter + FVector(0.0f, 0.0f, 310.0f), FColor(255,210,100));
+        FLinearColor(.38f,.34f,.27f), 1.95f);
     bHasPlayerSettlementVisual = true;
 
     for (int32 BuildingIndex = 0; BuildingIndex < 8; ++BuildingIndex)
     {
         const float Angle = 2.0f * PI * static_cast<float>(BuildingIndex) / 8.0f;
-        const FVector Offset(FMath::Cos(Angle) * 345.0f, FMath::Sin(Angle) * 290.0f, 45.0f);
+        const FVector Offset(FMath::Cos(Angle) * 410.0f, FMath::Sin(Angle) * 350.0f, 55.0f);
         SpawnBuilding(TownCenter + Offset, FMath::RadiansToDegrees(Angle) + 90.0f,
             FString::Printf(TEXT("BuildingSlot_%d"), BuildingIndex + 1),
             BuildingIndex % 2 ? FLinearColor(.42f,.29f,.17f) : FLinearColor(.34f,.31f,.23f),
-            .72f + (BuildingIndex % 3) * .10f);
+            .88f + (BuildingIndex % 3) * .12f);
         ++PlayerBuildingVisualCount;
     }
     // Four short lanes organize the settlement around a central square.
@@ -326,13 +397,12 @@ void AAPGreyboxWorldBuilder::SpawnBuilding(const FVector& Location, float Yaw, c
 void AAPGreyboxWorldBuilder::SpawnAIAndNeutralLandmarks()
 {
     const FVector AI = ProvinceLocation(5) + FVector(0,0,95);
-    SpawnShape(CubeMesh, AI, FVector(1.25f,1.05f,.72f), FLinearColor(.31f,.27f,.23f), TEXT("AIOutpostKeep"));
+    SpawnShape(CubeMesh, AI, FVector(1.65f,1.35f,.95f), FLinearColor(.31f,.27f,.23f), TEXT("AIOutpostKeep"));
     for (int32 Corner = 0; Corner < 4; ++Corner)
     {
         SpawnShape(CylinderMesh, AI + FVector(Corner < 2 ? -135 : 135, Corner % 2 ? -115 : 115, 35),
-            FVector(.35f,.35f,1.15f), FLinearColor(.38f,.30f,.24f), TEXT("AIOutpostTower"));
+            FVector(.46f,.46f,1.45f), FLinearColor(.38f,.30f,.24f), TEXT("AIOutpostTower"));
     }
-    SpawnLabel(TEXT("CINDER WATCH\nAI OUTPOST"), AI + FVector(0,0,220), FColor(255,90,70));
     bHasAIOutpostVisual = true;
     for (int32 Wall = 0; Wall < 4; ++Wall)
     {
@@ -370,6 +440,21 @@ void AAPGreyboxWorldBuilder::FaceLabelsToCamera()
         Label->SetActorRotation(BillboardRotation);
     };
     for (AActor* Label : WorldLabels) Face(Label);
+}
+
+void AAPGreyboxWorldBuilder::LogVisualStats()
+{
+    int32 ActorCount = 0;
+    int32 ComponentCount = 0;
+    for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+    {
+        ++ActorCount;
+        TInlineComponentArray<UActorComponent*> Components;
+        It->GetComponents(Components);
+        ComponentCount += Components.Num();
+    }
+    UE_LOG(LogTemp, Display, TEXT("ASHFALL_VISUAL_STATS Actors=%d Components=%d TerrainInstances=%d EnvironmentInstances=%d DynamicMaterials=%d"),
+        ActorCount, ComponentCount, TerrainPatchCount, EnvironmentInstanceCount, SharedMaterials.Num());
 }
 
 void AAPGreyboxWorldBuilder::UpdateProvinceVisuals()

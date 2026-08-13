@@ -5,7 +5,7 @@ public class AshfallProvinces : ModuleRules
     public AshfallProvinces(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        PublicDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", "InputCore", "UMG" });
+        PublicDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", "InputCore", "UMG", "ProceduralMeshComponent" });
         PrivateDependencyModuleNames.AddRange(new[] { "Slate", "SlateCore" });
         if (Target.bBuildEditor)
         {

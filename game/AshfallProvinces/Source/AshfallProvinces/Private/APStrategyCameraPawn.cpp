@@ -10,7 +10,7 @@ AAPStrategyCameraPawn::AAPStrategyCameraPawn()
 
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(SceneRoot);
-    SpringArm->TargetArmLength = 5200.0f;
+    SpringArm->TargetArmLength = 4300.0f;
     SpringArm->SetRelativeRotation(FRotator(-55.0f, -32.0f, 0.0f));
     SpringArm->bDoCollisionTest = false;
 

@@ -10,6 +10,8 @@
 #include "EngineUtils.h"
 #include "Engine/GameViewportClient.h"
 #include "ImageUtils.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Widgets/SViewport.h"
 #include "Misc/FileHelper.h"
 #include "Kismet/GameplayStatics.h"
 #include "Simulation/APSimulationSubsystem.h"
@@ -335,7 +337,7 @@ bool FAPVerifyPIEPrototypeUICommand::Update()
         Test->TestTrue(TEXT("AI outpost visual exists"), VisualBuilder->HasAIOutpostVisual());
         Test->TestTrue(TEXT("Neutral landmark variants exist"), VisualBuilder->GetNeutralLandmarkCount() >= 4);
         Test->TestTrue(TEXT("Environment instances exist"), VisualBuilder->GetEnvironmentInstanceCount() >= 60);
-        Test->TestTrue(TEXT("Terrain grid covers intended camera framing"), VisualBuilder->GetTerrainPatchCount() >= 285);
+        Test->TestEqual(TEXT("Continuous terrain uses one seamless base instance"), VisualBuilder->GetTerrainPatchCount(), 1);
         Test->TestTrue(TEXT("Company visual spawns after muster"), VisualBuilder->GetCompanyVisualCount() >= 1);
         Test->TestTrue(TEXT("Mustered company selection ring is active"),
             VisualBuilder->IsCompanyVisualSelected(Controller->GetSelectedCompanyId()));
@@ -350,10 +352,23 @@ bool FAPVerifyPIEPrototypeUICommand::Update()
             FVector::Dist2D(BeforeMove, AfterMove) > 500.0f);
     }
 
-    const FString ScreenshotPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots/WindowsEditor/Ashfall_v0_3_Overview.png"));
-    GEngine->Exec(PIEWorld, TEXT("DisableAllScreenMessages"));
-    FScreenshotRequest::RequestScreenshot(ScreenshotPath, true, false);
-    UE_LOG(LogTemp, Display, TEXT("ASHFALL_PIE_SCREENSHOT_REQUESTED=%s"), *ScreenshotPath);
+    UGameViewportClient* GameViewport = PIEWorld->GetGameViewport();
+    FViewport* Viewport = GameViewport ? GameViewport->Viewport : nullptr;
+    Test->TestNotNull(TEXT("PIE game viewport exists for remediated overview capture"), Viewport);
+    if (Viewport)
+    {
+        TArray<FColor> Pixels;
+        FIntVector CaptureSize(0, 0, 0);
+        const TSharedPtr<SViewport> GameViewportWidget = GameViewport->GetGameViewportWidget();
+        Test->TestTrue(TEXT("Remediated overview world and UI can be captured"),
+            GameViewportWidget.IsValid() && FSlateApplication::Get().TakeScreenshot(GameViewportWidget.ToSharedRef(), Pixels, CaptureSize));
+        const FIntPoint Size(CaptureSize.X, CaptureSize.Y);
+        TArray64<uint8> PngData;
+        FImageUtils::PNGCompressImageArray(Size.X, Size.Y, Pixels, PngData);
+        const FString ScreenshotPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots/WindowsEditor/Ashfall_v0_3_Remediated_Overview.png"));
+        Test->TestTrue(TEXT("Remediated overview PNG saved"), FFileHelper::SaveArrayToFile(PngData, *ScreenshotPath));
+        UE_LOG(LogTemp, Display, TEXT("ASHFALL_REMEDIATED_OVERVIEW_CAPTURED=%s SIZE=%dx%d"), *ScreenshotPath, Size.X, Size.Y);
+    }
     return true;
 }
 
